@@ -99,6 +99,7 @@ class MiniComposeView @JvmOverloads constructor(
 
         // Build the Compose LayoutNode tree
         internalView!!.root.let { root ->
+            root.clearChildren()
             builder(root)
         }
     }
@@ -209,6 +210,28 @@ class MiniAndroidComposeView @JvmOverloads constructor(
     var drawPassCount: Long = 0
         private set
 
+    /** Microseconds spent in the most recent layout phase. */
+    var lastLayoutTimeUs: Long = 0L
+        private set
+
+    /** Microseconds spent in the most recent draw phase. */
+    var lastDrawTimeUs: Long = 0L
+        private set
+
+    /** Sum of layout phase microseconds in the current 1-second sample window. */
+    var windowLayoutTimeUs: Long = 0L
+        private set
+
+    /** Sum of draw phase microseconds in the current 1-second sample window. */
+    var windowDrawTimeUs: Long = 0L
+        private set
+
+    /** Resets the 1-second sample window timing counters. */
+    fun resetTimingWindow() {
+        windowLayoutTimeUs = 0L
+        windowDrawTimeUs = 0L
+    }
+
     init {
         // Enable hardware acceleration for RenderNode support
         setLayerType(LAYER_TYPE_HARDWARE, null)
@@ -275,12 +298,15 @@ class MiniAndroidComposeView @JvmOverloads constructor(
     override fun dispatchDraw(canvas: Canvas) {
         drawPassCount++
 
-        // Step 1: Ensure measure & layout is complete before drawing.
-        // In real Compose, this calls measureAndLayout() which processes
-        // all pending layout requests.
+        // Step 1: Measure & Layout phase timing (in microseconds)
+        val layoutStartNs = System.nanoTime()
         measureAndLayoutNodes()
+        val layoutDurationUs = (System.nanoTime() - layoutStartNs) / 1000L
+        lastLayoutTimeUs = layoutDurationUs
+        windowLayoutTimeUs += layoutDurationUs
 
         isDrawingContent = true
+        val drawStartNs = System.nanoTime()
         try {
             // Step 2: Bridge the system Canvas to Compose's MiniCanvas
             // using the zero-allocation CanvasHolder pattern.
@@ -291,6 +317,9 @@ class MiniAndroidComposeView @JvmOverloads constructor(
             }
         } finally {
             isDrawingContent = false
+            val drawDurationUs = (System.nanoTime() - drawStartNs) / 1000L
+            lastDrawTimeUs = drawDurationUs
+            windowDrawTimeUs += drawDurationUs
         }
 
         // Step 4: Let ViewGroup draw any native child Views

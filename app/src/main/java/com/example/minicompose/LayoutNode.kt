@@ -87,6 +87,7 @@ class LayoutNode(val name: String = "Node") {
      * Unlike [graphicsLayer] header properties, changing this triggers
      * a full re-layout of the subtree. This is the EXPENSIVE path.
      */
+    /** Positional offset — analogous to `Modifier.offset`. */
     var offsetX: Int = 0
     var offsetY: Int = 0
 
@@ -107,32 +108,41 @@ class LayoutNode(val name: String = "Node") {
         _children.remove(child)
     }
 
+    fun clearChildren() {
+        for (child in _children) {
+            child.parent = null
+        }
+        _children.clear()
+    }
+
     // ── Phase 2: Measure & Layout ───────────────────────────────────────────
 
     /**
      * Recursively measures and lays out the subtree.
      *
      * In real Compose, this is triggered by [AndroidComposeView.measureAndLayout()]
-     * which is called at the start of [dispatchDraw] — ensuring the tree is
-     * up-to-date before any drawing begins.
+     * which is called at the start of [dispatchDraw] — ensuring dirty nodes are
+     * measured and laid out before drawing.
      */
     fun measureAndLayout(availableWidth: Int, availableHeight: Int) {
-        // Measure: determine own size
-        measureBlock?.let { measure ->
-            val (w, h) = measure(availableWidth, availableHeight)
-            width = w
-            height = h
-        }
+        if (needsLayout) {
+            // Measure: determine own size
+            measureBlock?.let { measure ->
+                val (w, h) = measure(availableWidth, availableHeight)
+                width = w
+                height = h
+            }
 
-        // Layout: place children
-        layoutBlock?.invoke(this)
+            // Layout: place children
+            layoutBlock?.invoke(this)
+
+            needsLayout = false
+        }
 
         // Recursively measure & layout children
         for (child in _children) {
             child.measureAndLayout(width, height)
         }
-
-        needsLayout = false
     }
 
     // ── Phase 3: Draw ───────────────────────────────────────────────────────
