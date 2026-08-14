@@ -765,12 +765,12 @@ class MainActivity : Activity() {
                     val leftLayouts = (leftAcv.layoutPassCount - leftLastLayout).coerceAtLeast(0)
                     val rightLayouts = (rightAcv.layoutPassCount - rightLastLayout).coerceAtLeast(0)
 
-                    // Compute true average microsecond execution times
-                    val leftAvgLayoutUs = if (leftLayouts > 0) leftAcv.windowLayoutTimeUs / leftLayouts else leftAcv.lastLayoutTimeUs
-                    val leftAvgDrawUs = if (leftDraws > 0) leftAcv.windowDrawTimeUs / leftDraws else leftAcv.lastDrawTimeUs
+                    // Compute true average microsecond execution times (0 µs when 0 passes occurred)
+                    val leftAvgLayoutUs = if (leftLayouts > 0) leftAcv.windowLayoutTimeUs / leftLayouts else 0L
+                    val leftAvgDrawUs = if (leftDraws > 0) leftAcv.windowDrawTimeUs / leftDraws else 0L
 
-                    val rightAvgLayoutUs = if (rightLayouts > 0) rightAcv.windowLayoutTimeUs / rightLayouts else rightAcv.lastLayoutTimeUs
-                    val rightAvgDrawUs = if (rightDraws > 0) rightAcv.windowDrawTimeUs / rightDraws else rightAcv.lastDrawTimeUs
+                    val rightAvgLayoutUs = if (rightLayouts > 0) rightAcv.windowLayoutTimeUs / rightLayouts else 0L
+                    val rightAvgDrawUs = if (rightDraws > 0) rightAcv.windowDrawTimeUs / rightDraws else 0L
 
                     // Reset timing windows
                     leftAcv.resetTimingWindow()
