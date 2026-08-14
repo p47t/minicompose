@@ -309,9 +309,6 @@ class MiniAndroidComposeView @JvmOverloads constructor(
                 lastLayoutTimeUs = layoutDurationUs
                 windowLayoutTimeUs += layoutDurationUs
             }
-        } else {
-            // Clean tree: 0 layout work performed, 0 µs execution time
-            lastLayoutTimeUs = 0L
         }
 
         isDrawingContent = true

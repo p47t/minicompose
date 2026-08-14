@@ -259,8 +259,11 @@ class MainActivity : Activity() {
 
         setContentView(rootLayout)
 
-        // Setup the compose trees
-        leftComposeView.post { rebuildTrees() }
+        // Setup the compose trees and auto-start benchmark animation
+        leftComposeView.post {
+            rebuildTrees()
+            startAnimation()
+        }
 
         // Start stats telemetry loop
         startStatsUpdater()
@@ -609,29 +612,52 @@ class MainActivity : Activity() {
         }
         canvas.drawText(if (isLeftGpu) "0 µs Layout Phase" else "Re-measuring Subtree", 46f, 34f, modePaint)
 
-        // Draw Content Lines & Tags
-        val linePaint = Paint().apply {
-            color = Color.parseColor("#334155")
-            style = Paint.Style.FILL
+        // Draw Content Data Rows
+        val textRowPaint = Paint().apply {
+            color = Color.parseColor("#CBD5E1")
+            textSize = 10f
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
             isAntiAlias = true
         }
-        val tagPaint = Paint().apply {
+        val tagBgPaint = Paint().apply {
             color = if (isLeftGpu) Color.parseColor("#1E3A8A") else Color.parseColor("#7F1D1D")
             style = Paint.Style.FILL
             isAntiAlias = true
         }
+        val tagTextPaint = Paint().apply {
+            color = if (isLeftGpu) Color.parseColor("#93C5FD") else Color.parseColor("#FCA5A5")
+            textSize = 8.5f
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            isAntiAlias = true
+        }
 
-        var yOffset = 50f
+        val dataLabels = listOf(
+            "Node Layout Policy",
+            "Constraint Bounds",
+            "Flex Box Child Measure",
+            "Text Glyph Layout",
+            "Child Coordinate Placement",
+            "Hierarchy Re-measure",
+            "Subtree Traversal Pass",
+            "Intrinsics Solver",
+            "Box Dimension Binding",
+            "Z-Index Placement"
+        )
+
+        var yOffset = 52f
         val maxLines = when (complexityLevel) {
             0 -> 3
             1 -> 6
-            else -> 10
+            else -> 9
         }
         for (i in 0 until maxLines) {
-            canvas.drawRoundRect(16f, yOffset, w - 50f, yOffset + 8f, 4f, 4f, linePaint)
-            canvas.drawRoundRect(w - 44f, yOffset - 1f, w - 16f, yOffset + 9f, 4f, 4f, tagPaint)
-            yOffset += 15f
-            if (yOffset > h - 40f) break
+            val label = dataLabels[i % dataLabels.size]
+            canvas.drawText("#${i + 1} $label", 16f, yOffset + 8f, textRowPaint)
+            canvas.drawRoundRect(w - 48f, yOffset - 2f, w - 14f, yOffset + 11f, 4f, 4f, tagBgPaint)
+            canvas.drawText("v${i + 1}", w - 31f, yOffset + 8f, tagTextPaint)
+            yOffset += 16f
+            if (yOffset > h - 38f) break
         }
 
         // Footer Action Pills
