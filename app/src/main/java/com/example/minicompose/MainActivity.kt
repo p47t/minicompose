@@ -675,7 +675,7 @@ class MainActivity : Activity() {
     }
 
     private fun markTreeDirty(node: LayoutNode) {
-        node.needsLayout = true
+        node.markNeedsLayout()
         for (child in node.children) {
             markTreeDirty(child)
         }

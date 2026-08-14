@@ -299,11 +299,20 @@ class MiniAndroidComposeView @JvmOverloads constructor(
         drawPassCount++
 
         // Step 1: Measure & Layout phase timing (in microseconds)
-        val layoutStartNs = System.nanoTime()
-        measureAndLayoutNodes()
-        val layoutDurationUs = (System.nanoTime() - layoutStartNs) / 1000L
-        lastLayoutTimeUs = layoutDurationUs
-        windowLayoutTimeUs += layoutDurationUs
+        // Only executes and times if the tree contains dirty nodes!
+        if (root.needsLayout || root.hasDirtyDescendants) {
+            val layoutStartNs = System.nanoTime()
+            val didWork = root.measureAndLayout(width, height)
+            val layoutDurationUs = (System.nanoTime() - layoutStartNs) / 1000L
+            if (didWork) {
+                layoutPassCount++
+                lastLayoutTimeUs = layoutDurationUs
+                windowLayoutTimeUs += layoutDurationUs
+            }
+        } else {
+            // Clean tree: 0 layout work performed, 0 µs execution time
+            lastLayoutTimeUs = 0L
+        }
 
         isDrawingContent = true
         val drawStartNs = System.nanoTime()
@@ -329,11 +338,12 @@ class MiniAndroidComposeView @JvmOverloads constructor(
 
     /**
      * Ensures the LayoutNode tree is measured and laid out.
-     * Called at the start of every dispatchDraw, just like real Compose.
+     * Called when dirty, just like real Compose.
      */
     private fun measureAndLayoutNodes() {
-        layoutPassCount++
-        root.measureAndLayout(width, height)
+        if (root.needsLayout || root.hasDirtyDescendants) {
+            root.measureAndLayout(width, height)
+        }
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {

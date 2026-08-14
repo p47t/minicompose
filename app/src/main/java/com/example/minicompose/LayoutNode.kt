@@ -91,21 +91,37 @@ class LayoutNode(val name: String = "Node") {
     var offsetX: Int = 0
     var offsetY: Int = 0
 
-    // ── Dirty flags ─────────────────────────────────────────────────────────
+    // ── Dirty flags (Mirrors Compose LayoutNode.layoutDelegate dirty flags) ──
 
     var needsLayout: Boolean = true
+    var hasDirtyDescendants: Boolean = true
     var needsRedraw: Boolean = true
+
+    /**
+     * Marks this node dirty and propagates hasDirtyDescendants up to the root,
+     * exactly like Compose LayoutNode.requestRemeasure() / requestRelayout().
+     */
+    fun markNeedsLayout() {
+        needsLayout = true
+        var p = parent
+        while (p != null && !p.hasDirtyDescendants) {
+            p.hasDirtyDescendants = true
+            p = p.parent
+        }
+    }
 
     // ── Tree operations ─────────────────────────────────────────────────────
 
     fun addChild(child: LayoutNode) {
         child.parent = this
         _children.add(child)
+        markNeedsLayout()
     }
 
     fun removeChild(child: LayoutNode) {
         child.parent = null
         _children.remove(child)
+        markNeedsLayout()
     }
 
     fun clearChildren() {
@@ -113,6 +129,7 @@ class LayoutNode(val name: String = "Node") {
             child.parent = null
         }
         _children.clear()
+        markNeedsLayout()
     }
 
     // ── Phase 2: Measure & Layout ───────────────────────────────────────────
@@ -120,11 +137,19 @@ class LayoutNode(val name: String = "Node") {
     /**
      * Recursively measures and lays out the subtree.
      *
-     * In real Compose, this is triggered by [AndroidComposeView.measureAndLayout()]
-     * which is called at the start of [dispatchDraw] — ensuring dirty nodes are
-     * measured and laid out before drawing.
+     * In real Compose, this is triggered by [AndroidComposeView.measureAndLayout()].
+     * If neither this node nor its descendants are dirty, it returns false in 0 steps.
+     *
+     * @return true if actual layout work was performed, false if skipped.
      */
-    fun measureAndLayout(availableWidth: Int, availableHeight: Int) {
+    fun measureAndLayout(availableWidth: Int, availableHeight: Int): Boolean {
+        // Fast-path: Skip entire subtree if clean (0 µs overhead)
+        if (!needsLayout && !hasDirtyDescendants) {
+            return false
+        }
+
+        var didWork = false
+
         if (needsLayout) {
             // Measure: determine own size
             measureBlock?.let { measure ->
@@ -137,12 +162,20 @@ class LayoutNode(val name: String = "Node") {
             layoutBlock?.invoke(this)
 
             needsLayout = false
+            didWork = true
         }
 
-        // Recursively measure & layout children
-        for (child in _children) {
-            child.measureAndLayout(width, height)
+        // Recursively measure & layout dirty children
+        if (hasDirtyDescendants) {
+            for (child in _children) {
+                if (child.measureAndLayout(width, height)) {
+                    didWork = true
+                }
+            }
+            hasDirtyDescendants = false
         }
+
+        return didWork
     }
 
     // ── Phase 3: Draw ───────────────────────────────────────────────────────
