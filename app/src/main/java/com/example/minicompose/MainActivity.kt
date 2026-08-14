@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.Gravity
 import android.view.animation.LinearInterpolator
 import android.widget.Button
@@ -38,6 +39,10 @@ import android.widget.TextView
  *    → Layout Time: 5,000 µs – 35,000 µs per frame!
  */
 class MainActivity : Activity() {
+
+    companion object {
+        private const val TAG = "MiniComposeBenchmark"
+    }
 
     // Independent Compose views for split-screen rendering
     private lateinit var leftComposeView: MiniComposeView
@@ -783,6 +788,16 @@ class MainActivity : Activity() {
                             append("▸ Live Microsecond (µs) profiling active")
                         }
                     }
+
+                    // Structured Logcat telemetry output
+                    val savingsUs = (rightAvgLayoutUs - leftAvgLayoutUs).coerceAtLeast(0)
+                    Log.i(
+                        TAG,
+                        "📊 [Benchmark | $nodeCount nodes] " +
+                        "LEFT(graphicsLayer): Layout=${leftAvgLayoutUs}µs ($leftLayouts passes/s), Draw=${leftAvgDrawUs}µs, Total=${leftAvgLayoutUs + leftAvgDrawUs}µs, FPS=$leftDraws | " +
+                        "RIGHT(offset): Layout=${rightAvgLayoutUs}µs ($rightLayouts passes/s), Draw=${rightAvgDrawUs}µs, Total=${rightAvgLayoutUs + rightAvgDrawUs}µs, FPS=$rightDraws | " +
+                        "SAVINGS=+${savingsUs}µs/frame"
+                    )
                 }
                 handler.postDelayed(this, 1000)
             }
