@@ -44,6 +44,7 @@ class MiniCanvas {
      * The underlying Android canvas. This reference is swapped by
      * [CanvasHolder.drawInto] every frame WITHOUT creating a new MiniCanvas.
      */
+    @PublishedApi
     internal var internalCanvas: Canvas = Canvas()
 
     // ── Drawing primitives (delegated to the underlying Android canvas) ──
