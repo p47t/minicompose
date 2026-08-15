@@ -27,7 +27,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Process 2: Right CPU Activity (:right_cpu) -->
+        <!-- Process 2: Right CPU Activity & Service (:right_cpu) -->
         <activity
             android:name=".RightCpuActivity"
             android:exported="true"
@@ -37,6 +37,11 @@
             android:hardwareAccelerated="true"
             android:label="⚠️ CPU (offset)"
             android:windowSoftInputMode="adjustResize" />
+
+        <service
+            android:name=".RightCpuService"
+            android:process=":right_cpu"
+            android:exported="false" />
 
     </application>
 
