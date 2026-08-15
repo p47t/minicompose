@@ -522,7 +522,7 @@ class RightCpuActivity : Activity() {
                 layoutDelayButton.setBackgroundColor(Color.parseColor("#D97706"))
             }
             20L -> {
-                layoutDelayButton.text = "🔥 Layout delay: 20ms (JANK)"
+                layoutDelayButton.text = "🔥 Layout delay: 20ms"
                 layoutDelayButton.setBackgroundColor(Color.parseColor("#DC2626"))
             }
         }
@@ -544,7 +544,7 @@ class RightCpuActivity : Activity() {
                 drawDelayButton.setBackgroundColor(Color.parseColor("#D97706"))
             }
             2000 -> {
-                drawDelayButton.text = "🎨 Draw load: +2000 DL (JANK)"
+                drawDelayButton.text = "🎨 Draw load: +2000 DL"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#DC2626"))
             }
         }
