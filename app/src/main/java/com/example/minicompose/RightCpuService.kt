@@ -391,22 +391,33 @@ class RightCpuService : Service() {
         // DisplayList Rebuild Simulation: Record extra drawing commands & text glyphs into Skia HWUI DisplayList
         if (simulatedDrawDelayMs > 0) {
             val extraPasses = when (simulatedDrawDelayMs) {
-                8L -> 30
-                20L -> 80
+                8L -> 200
+                20L -> 600
                 else -> 0
             }
             val extraPaint = Paint().apply {
                 color = Color.parseColor("#EF4444")
-                alpha = 25
-                textSize = 8f
+                alpha = 20
+                textSize = 7.5f
                 style = Paint.Style.STROKE
                 strokeWidth = 1f
                 isAntiAlias = true
             }
+            val extraTextPaint = Paint().apply {
+                color = Color.parseColor("#FCA5A5")
+                alpha = 25
+                textSize = 7.5f
+                isAntiAlias = true
+            }
+            val path = Path()
             for (p in 0 until extraPasses) {
-                val lineY = 40f + (p % 15) * 8f
-                canvas.drawRoundRect(8f, lineY, w - 8f, lineY + 6f, 2f, 2f, extraPaint)
-                canvas.drawText("DL Command #$p", 14f, lineY + 5f, extraPaint)
+                val lineY = 38f + (p % 25) * 6.5f
+                path.reset()
+                path.moveTo(8f, lineY)
+                path.lineTo(w - 8f, lineY + 2f)
+                canvas.getNativeCanvas().drawPath(path, extraPaint)
+                canvas.drawRoundRect(8f, lineY, w - 8f, lineY + 5f, 2f, 2f, extraPaint)
+                canvas.drawText("DL Command #$p [Skia DL]", 14f, lineY + 4f, extraTextPaint)
             }
         }
     }
