@@ -241,7 +241,17 @@ class RightCpuActivity : Activity() {
             width = cardWidth
             height = cardHeight
 
-            measureBlock = { pw, ph -> Pair(cardWidth, cardHeight) }
+            measureBlock = { pw, ph ->
+                if (simulatedCpuLoadMs > 0) {
+                    val start = System.nanoTime()
+                    val targetNs = simulatedCpuLoadMs * 1_000_000L
+                    var dummy = 0.0
+                    while (System.nanoTime() - start < targetNs) {
+                        dummy += Math.sin(dummy + 1.0)
+                    }
+                }
+                Pair(cardWidth, cardHeight)
+            }
             layoutBlock = { parent ->
                 var currY = 44
                 for (child in parent.children) {
@@ -385,12 +395,6 @@ class RightCpuActivity : Activity() {
             repeatMode = ValueAnimator.RESTART
             interpolator = LinearInterpolator()
             addUpdateListener { animation ->
-                if (simulatedCpuLoadMs > 0) {
-                    try {
-                        Thread.sleep(simulatedCpuLoadMs)
-                    } catch (_: InterruptedException) {}
-                }
-
                 animationProgress = animation.animatedValue as Float
                 val viewHeight = composeView.height
                 val amplitude = viewHeight * 0.26f
