@@ -158,7 +158,7 @@ class RightCpuActivity : Activity() {
         }
 
         drawDelayButton = Button(this).apply {
-            text = "🎨 Draw delay: 0ms"
+            text = "🎨 Draw load: Normal"
             textSize = 11f
             setBackgroundColor(Color.parseColor("#334155"))
             setTextColor(Color.WHITE)
@@ -529,15 +529,15 @@ class RightCpuActivity : Activity() {
         }
         when (simulatedDrawDelayMs) {
             0L -> {
-                drawDelayButton.text = "🎨 Draw delay: 0ms"
+                drawDelayButton.text = "🎨 Draw load: Normal"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#334155"))
             }
             8L -> {
-                drawDelayButton.text = "🎨 Draw delay: 8ms"
+                drawDelayButton.text = "🎨 Draw load: +30 DL"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#D97706"))
             }
             20L -> {
-                drawDelayButton.text = "🎨 Draw delay: 20ms (JANK)"
+                drawDelayButton.text = "🎨 Draw load: +80 DL (JANK)"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#DC2626"))
             }
         }
