@@ -51,6 +51,73 @@ class MainActivity : Activity() {
 
     companion object {
         private const val TAG = "MultiProcessCoordinator"
+
+        private const val BENCHMARK_CONSTRAINT_TEXT = "Solving LayoutNode constraint tree layout bounds flex metrics calculation and bounding box"
+        private const val BENCHMARK_DRAW_TEXT = "Component Node data binding constraint bounds typography glyph resolution cache"
+
+        private val cardBgPaint = Paint().apply {
+            color = Color.parseColor("#1D4ED8")
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        }
+        private val cardBorderPaint = Paint().apply {
+            color = Color.parseColor("#60A5FA")
+            style = Paint.Style.STROKE
+            strokeWidth = 2.5f
+            isAntiAlias = true
+        }
+        private val avatarPaint = Paint().apply {
+            color = Color.parseColor("#3B82F6")
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        }
+        private val titlePaint = Paint().apply {
+            color = Color.WHITE
+            textSize = 14f
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            isAntiAlias = true
+        }
+        private val modePaint = Paint().apply {
+            color = Color.parseColor("#93C5FD")
+            textSize = 10f
+            isAntiAlias = true
+        }
+        private val textRowPaint = Paint().apply {
+            color = Color.parseColor("#CBD5E1")
+            textSize = 9.5f
+            isAntiAlias = true
+        }
+        private val tagBgPaint = Paint().apply {
+            color = Color.parseColor("#1E3A8A")
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        }
+        private val tagTextPaint = Paint().apply {
+            color = Color.parseColor("#93C5FD")
+            textSize = 8f
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            isAntiAlias = true
+        }
+        private val extraDlPaint = Paint().apply {
+            color = Color.parseColor("#3B82F6")
+            alpha = 25
+            textSize = 7.5f
+            isAntiAlias = false
+        }
+        private val constraintBenchPaint = Paint().apply { textSize = 10f }
+        private val itemRowMeasurePaint = Paint().apply { textSize = 11f }
+        private val trackPaint = Paint().apply {
+            color = Color.parseColor("#1E293B")
+            strokeWidth = 3f
+            style = Paint.Style.STROKE
+            pathEffect = android.graphics.DashPathEffect(floatArrayOf(6f, 6f), 0f)
+        }
+        private val dotPaint = Paint().apply {
+            color = Color.parseColor("#38BDF8")
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        }
     }
 
     // Left View (Process :left_gpu)
@@ -360,20 +427,9 @@ class MainActivity : Activity() {
             root.measureBlock = { pw, ph -> Pair(pw, ph) }
 
             root.drawBlock = { canvas ->
-                val trackPaint = Paint().apply {
-                    color = Color.parseColor("#1E293B")
-                    strokeWidth = 3f
-                    style = Paint.Style.STROKE
-                    pathEffect = android.graphics.DashPathEffect(floatArrayOf(6f, 6f), 0f)
-                }
                 canvas.getNativeCanvas().drawLine(w / 2f, 20f, w / 2f, h - 20f, trackPaint)
 
                 // Motion trail dots
-                val dotPaint = Paint().apply {
-                    color = Color.parseColor("#38BDF8")
-                    style = Paint.Style.FILL
-                    isAntiAlias = true
-                }
                 synchronized(leftTrail) {
                     leftTrail.forEachIndexed { index, yPos ->
                         dotPaint.alpha = (255 * (index + 1) / (leftTrail.size.coerceAtLeast(1))).coerceIn(30, 255)
@@ -425,9 +481,8 @@ class MainActivity : Activity() {
             measureBlock = { pw, ph ->
                 if (simulatedLayoutDelayMs > 0) {
                     val iterations = (simulatedLayoutDelayMs * 120).toInt()
-                    val textPaint = Paint().apply { textSize = 10f }
                     for (k in 0 until iterations) {
-                        textPaint.measureText("Solving LayoutNode constraint tree layout bounds flex #$k")
+                        constraintBenchPaint.measureText(BENCHMARK_CONSTRAINT_TEXT)
                     }
                 }
                 Pair(cardWidth, cardHeight)
@@ -458,8 +513,7 @@ class MainActivity : Activity() {
                 width = cardWidth - 16
                 height = 16
                 measureBlock = { aw, _ ->
-                    val textPaint = Paint().apply { textSize = 11f }
-                    val textW = textPaint.measureText("Component #$i metrics data binding & constraints")
+                    val textW = itemRowMeasurePaint.measureText(BENCHMARK_CONSTRAINT_TEXT)
                     Pair(textW.toInt().coerceAtMost(aw), 16)
                 }
             }
@@ -486,60 +540,11 @@ class MainActivity : Activity() {
     }
 
     private fun drawCardVisuals(canvas: MiniCanvas, w: Int, h: Int) {
-        val bgPaint = Paint().apply {
-            color = Color.parseColor("#1D4ED8")
-            style = Paint.Style.FILL
-            isAntiAlias = true
-        }
-        canvas.drawRoundRect(0f, 0f, w.toFloat(), h.toFloat(), 16f, 16f, bgPaint)
-
-        val borderPaint = Paint().apply {
-            color = Color.parseColor("#60A5FA")
-            style = Paint.Style.STROKE
-            strokeWidth = 2.5f
-            isAntiAlias = true
-        }
-        canvas.drawRoundRect(1.5f, 1.5f, w.toFloat() - 1.5f, h.toFloat() - 1.5f, 14.5f, 14.5f, borderPaint)
-
-        val avatarPaint = Paint().apply {
-            color = Color.parseColor("#3B82F6")
-            style = Paint.Style.FILL
-            isAntiAlias = true
-        }
+        canvas.drawRoundRect(0f, 0f, w.toFloat(), h.toFloat(), 16f, 16f, cardBgPaint)
+        canvas.drawRoundRect(1.5f, 1.5f, w.toFloat() - 1.5f, h.toFloat() - 1.5f, 14.5f, 14.5f, cardBorderPaint)
         canvas.getNativeCanvas().drawCircle(22f, 22f, 10f, avatarPaint)
-
-        val titlePaint = Paint().apply {
-            color = Color.WHITE
-            textSize = 14f
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            isAntiAlias = true
-        }
         canvas.drawText("GPU Card (:left_gpu)", 38f, 20f, titlePaint)
-
-        val modePaint = Paint().apply {
-            color = Color.parseColor("#93C5FD")
-            textSize = 10f
-            isAntiAlias = true
-        }
         canvas.drawText("PID ${Process.myPid()} | 0 µs Layout Phase", 38f, 32f, modePaint)
-
-        val textRowPaint = Paint().apply {
-            color = Color.parseColor("#CBD5E1")
-            textSize = 9.5f
-            isAntiAlias = true
-        }
-        val tagBgPaint = Paint().apply {
-            color = Color.parseColor("#1E3A8A")
-            style = Paint.Style.FILL
-            isAntiAlias = true
-        }
-        val tagTextPaint = Paint().apply {
-            color = Color.parseColor("#93C5FD")
-            textSize = 8f
-            textAlign = Paint.Align.CENTER
-            typeface = Typeface.create("sans-serif", Typeface.BOLD)
-            isAntiAlias = true
-        }
 
         val dataLabels = listOf(
             "Node Layout Policy", "Constraint Bounds", "Flex Box Measure",
@@ -562,17 +567,10 @@ class MainActivity : Activity() {
 
         // DisplayList Rebuild Simulation: CPU evaluates paint states, text formatting, and records draw commands
         if (drawLoadPasses > 0) {
-            val extraPaint = Paint().apply {
-                color = Color.parseColor("#3B82F6")
-                alpha = 25
-                textSize = 7.5f
-                isAntiAlias = false
-            }
             for (p in 0 until drawLoadPasses) {
                 val lineY = 40f + (p % 20) * 8f
-                val formattedText = "Component Node #$p data binding, constraint bounds, typography glyph resolution"
-                extraPaint.measureText(formattedText)
-                canvas.drawRect(8f, lineY, w - 8f, lineY + 5f, extraPaint)
+                extraDlPaint.measureText(BENCHMARK_DRAW_TEXT)
+                canvas.drawRect(8f, lineY, w - 8f, lineY + 5f, extraDlPaint)
             }
         }
     }
