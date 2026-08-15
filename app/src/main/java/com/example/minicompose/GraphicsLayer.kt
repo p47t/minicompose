@@ -217,7 +217,7 @@ class GraphicsLayer(name: String = "MiniComposeLayer") {
      * alpha) as a hardware transform — the Display List itself is untouched.
      */
     fun drawInto(canvas: Canvas) {
-        if (renderNode.hasDisplayList()) {
+        if (renderNode.hasDisplayList() && canvas.isHardwareAccelerated) {
             canvas.drawRenderNode(renderNode)
         }
     }

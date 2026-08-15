@@ -183,6 +183,7 @@ class RightCpuService : Service() {
         newHost.setView(newComposeView, width, height)
 
         setupComposeTree(width, height)
+        newComposeView.getAndroidComposeView()?.enableTimeoutFallback = true
         startAnimation()
         startStatsUpdater()
 

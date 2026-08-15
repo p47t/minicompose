@@ -231,7 +231,7 @@ class MiniAndroidComposeView @JvmOverloads constructor(
         private set
 
     /** Timeout fallback configuration: if true, frames that exceed budget reuse previous frame. */
-    var enableTimeoutFallback: Boolean = true
+    var enableTimeoutFallback: Boolean = false
     var frameTimeoutBudgetUs: Long = 16_000L
 
     var timeoutFallbackCount: Long = 0

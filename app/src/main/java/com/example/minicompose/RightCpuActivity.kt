@@ -186,6 +186,7 @@ class RightCpuActivity : Activity() {
 
         composeView.post {
             setupComposeTree()
+            composeView.getAndroidComposeView()?.enableTimeoutFallback = true
             startAnimation()
         }
 
