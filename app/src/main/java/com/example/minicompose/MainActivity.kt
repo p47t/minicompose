@@ -661,8 +661,8 @@ class MainActivity : Activity() {
 
     private fun cycleDrawLoad() {
         drawLoadPasses = when (drawLoadPasses) {
-            0 -> 1000
-            1000 -> 2000
+            0 -> 200
+            200 -> 400
             else -> 0
         }
         when (drawLoadPasses) {
@@ -670,12 +670,12 @@ class MainActivity : Activity() {
                 drawDelayButton.text = "🎨 Draw load: Normal"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#334155"))
             }
-            1000 -> {
-                drawDelayButton.text = "🎨 Draw load: +1000 DL"
+            200 -> {
+                drawDelayButton.text = "🎨 Draw load: +200 DL"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#D97706"))
             }
-            2000 -> {
-                drawDelayButton.text = "🎨 Draw load: +2000 DL"
+            400 -> {
+                drawDelayButton.text = "🎨 Draw load: +400 DL"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#DC2626"))
             }
         }
