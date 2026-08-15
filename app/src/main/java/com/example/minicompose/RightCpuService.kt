@@ -75,11 +75,16 @@ class RightCpuService : Service() {
                     val width = data.readInt()
                     val height = data.readInt()
 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && hostToken != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && hostToken != null && reply != null) {
                         val surfacePackage = createEmbeddedViewHierarchy(hostToken, width, height)
-                        reply?.writeNoException()
-                        reply?.writeInt(Process.myPid())
-                        surfacePackage?.writeToParcel(reply, 0)
+                        reply.writeNoException()
+                        reply.writeInt(Process.myPid())
+                        if (surfacePackage != null) {
+                            reply.writeInt(1)
+                            surfacePackage.writeToParcel(reply, 0)
+                        } else {
+                            reply.writeInt(0)
+                        }
                     }
                     return true
                 }
@@ -96,12 +101,14 @@ class RightCpuService : Service() {
                     return true
                 }
                 TRANSACTION_GET_STATS -> {
-                    reply?.writeNoException()
-                    reply?.writeInt(Process.myPid())
-                    reply?.writeInt(currentFps)
-                    reply?.writeLong(currentLayoutsPerSec)
-                    reply?.writeLong(currentLayoutUs)
-                    reply?.writeLong(currentDrawUs)
+                    if (reply != null) {
+                        reply.writeNoException()
+                        reply.writeInt(Process.myPid())
+                        reply.writeInt(currentFps)
+                        reply.writeLong(currentLayoutsPerSec)
+                        reply.writeLong(currentLayoutUs)
+                        reply.writeLong(currentDrawUs)
+                    }
                     return true
                 }
             }

@@ -307,8 +307,11 @@ class MainActivity : Activity() {
                     service.transact(RightCpuService.TRANSACTION_CREATE_SURFACE, data, reply, 0)
                     reply.readException()
                     rightPid = reply.readInt()
-                    val surfacePackage = SurfaceControlViewHost.SurfacePackage.CREATOR.createFromParcel(reply)
-                    rightSurfaceView.setChildSurfacePackage(surfacePackage)
+                    val hasPackage = reply.readInt()
+                    if (hasPackage != 0) {
+                        val surfacePackage = SurfaceControlViewHost.SurfacePackage.CREATOR.createFromParcel(reply)
+                        rightSurfaceView.setChildSurfacePackage(surfacePackage)
+                    }
 
                     rightHeader.text = "⚠️ PROCESS: :right_cpu (PID $rightPid)\nModifier.offset (Layout / CPU)"
                     summaryBanner.text = "▸ Left: :left_gpu (PID ${Process.myPid()}) ⚡ | Right: :right_cpu (PID $rightPid) ⚠️"
