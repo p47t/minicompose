@@ -561,31 +561,19 @@ class MainActivity : Activity() {
             if (yOffset > h - 36f) break
         }
 
-        // DisplayList Rebuild Simulation: Record extra drawing commands & text glyphs into Skia HWUI DisplayList
+        // DisplayList Rebuild Simulation: CPU evaluates paint states, text formatting, and records draw commands
         if (drawLoadPasses > 0) {
             val extraPaint = Paint().apply {
                 color = Color.parseColor("#3B82F6")
-                alpha = 20
-                textSize = 7.5f
-                style = Paint.Style.STROKE
-                strokeWidth = 1f
-                isAntiAlias = true
-            }
-            val extraTextPaint = Paint().apply {
-                color = Color.parseColor("#93C5FD")
                 alpha = 25
                 textSize = 7.5f
-                isAntiAlias = true
+                isAntiAlias = false
             }
-            val path = Path()
             for (p in 0 until drawLoadPasses) {
-                val lineY = 38f + (p % 25) * 6.5f
-                path.reset()
-                path.moveTo(8f, lineY)
-                path.lineTo(w - 8f, lineY + 2f)
-                canvas.getNativeCanvas().drawPath(path, extraPaint)
-                canvas.drawRoundRect(8f, lineY, w - 8f, lineY + 5f, 2f, 2f, extraPaint)
-                canvas.drawText("DL Command #$p [Skia DL]", 14f, lineY + 4f, extraTextPaint)
+                val lineY = 40f + (p % 20) * 8f
+                val formattedText = "DL Record #$p [DisplayList Cmd]"
+                extraPaint.measureText(formattedText)
+                canvas.drawRect(8f, lineY, w - 8f, lineY + 5f, extraPaint)
             }
         }
     }
@@ -785,31 +773,36 @@ class MainActivity : Activity() {
                     Log.i(TAG, "[:left_gpu | PID ${Process.myPid()}] FPS=$leftDraws, Layout=${leftAvgLayoutUs}µs ($leftLayouts passes/s), Draw=${leftAvgDrawUs}µs")
                 }
 
-                // 2. Fetch Right Stats across Binder from :right_cpu process
-                rightServiceBinder?.let { service ->
-                    val data = Parcel.obtain()
-                    val reply = Parcel.obtain()
-                    try {
-                        service.transact(RightCpuService.TRANSACTION_GET_STATS, data, reply, 0)
-                        reply.readException()
-                        val rPid = reply.readInt()
-                        val rFps = reply.readInt()
-                        val rLayouts = reply.readLong()
-                        val rLayoutUs = reply.readLong()
-                        val rDrawUs = reply.readLong()
+                // 2. Fetch Right Stats across Binder asynchronously (avoids blocking main thread)
+                val binder = rightServiceBinder
+                if (binder != null) {
+                    Thread {
+                        val data = Parcel.obtain()
+                        val reply = Parcel.obtain()
+                        try {
+                            binder.transact(RightCpuService.TRANSACTION_GET_STATS, data, reply, 0)
+                            reply.readException()
+                            val rPid = reply.readInt()
+                            val rFps = reply.readInt()
+                            val rLayouts = reply.readLong()
+                            val rLayoutUs = reply.readLong()
+                            val rDrawUs = reply.readLong()
 
-                        rightStatsText.text = buildString {
-                            appendLine("FPS: $rFps fps | Passes: $rLayouts/s")
-                            appendLine("Layout: ${rLayoutUs} µs (RE-MEASURING)")
-                            append("Draw: ${rDrawUs} µs | Total: ${rLayoutUs + rDrawUs} µs")
+                            handler.post {
+                                rightStatsText.text = buildString {
+                                    appendLine("FPS: $rFps fps | Passes: $rLayouts/s")
+                                    appendLine("Layout: ${rLayoutUs} µs (RE-MEASURING)")
+                                    append("Draw: ${rDrawUs} µs | Total: ${rLayoutUs + rDrawUs} µs")
+                                }
+                            }
+
+                            Log.i(TAG, "[:right_cpu | PID $rPid] FPS=$rFps, Layout=${rLayoutUs}µs ($rLayouts passes/s), Draw=${rDrawUs}µs")
+                        } catch (_: Exception) {}
+                        finally {
+                            data.recycle()
+                            reply.recycle()
                         }
-
-                        Log.i(TAG, "[:right_cpu | PID $rPid] FPS=$rFps, Layout=${rLayoutUs}µs ($rLayouts passes/s), Draw=${rDrawUs}µs")
-                    } catch (_: Exception) {}
-                    finally {
-                        data.recycle()
-                        reply.recycle()
-                    }
+                    }.start()
                 }
 
                 handler.postDelayed(this, 1000)
