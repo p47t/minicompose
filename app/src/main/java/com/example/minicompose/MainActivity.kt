@@ -653,7 +653,7 @@ class MainActivity : Activity() {
     private fun cycleLayoutDelay() {
         simulatedLayoutDelayMs = when (simulatedLayoutDelayMs) {
             0L -> 8L
-            8L -> 20L
+            8L -> 16L
             else -> 0L
         }
         when (simulatedLayoutDelayMs) {
@@ -665,8 +665,8 @@ class MainActivity : Activity() {
                 layoutDelayButton.text = "🔥 Layout delay: 8ms"
                 layoutDelayButton.setBackgroundColor(Color.parseColor("#D97706"))
             }
-            20L -> {
-                layoutDelayButton.text = "🔥 Layout delay: 20ms"
+            16L -> {
+                layoutDelayButton.text = "🔥 Layout delay: 16ms"
                 layoutDelayButton.setBackgroundColor(Color.parseColor("#DC2626"))
             }
         }
