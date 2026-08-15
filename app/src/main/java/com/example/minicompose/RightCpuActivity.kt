@@ -530,8 +530,8 @@ class RightCpuActivity : Activity() {
 
     private fun cycleDrawLoad() {
         drawLoadPasses = when (drawLoadPasses) {
-            0 -> 100
-            100 -> 200
+            0 -> 1000
+            1000 -> 2000
             else -> 0
         }
         when (drawLoadPasses) {
@@ -539,12 +539,12 @@ class RightCpuActivity : Activity() {
                 drawDelayButton.text = "🎨 Draw load: Normal"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#334155"))
             }
-            100 -> {
-                drawDelayButton.text = "🎨 Draw load: +100 DL"
+            1000 -> {
+                drawDelayButton.text = "🎨 Draw load: +1000 DL"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#D97706"))
             }
-            200 -> {
-                drawDelayButton.text = "🎨 Draw load: +200 DL (JANK)"
+            2000 -> {
+                drawDelayButton.text = "🎨 Draw load: +2000 DL (JANK)"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#DC2626"))
             }
         }
