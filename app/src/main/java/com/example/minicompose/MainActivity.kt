@@ -64,7 +64,7 @@ class MainActivity : Activity() {
 
     private lateinit var summaryBanner: TextView
     private lateinit var complexityButton: Button
-    private lateinit var cpuLoadButton: Button
+    private lateinit var layoutDelayButton: Button
 
     private var rightServiceBinder: IBinder? = null
     private var isRightBound = false
@@ -74,7 +74,7 @@ class MainActivity : Activity() {
     private var animationProgress: Float = 0f
     private var leftAnimator: ValueAnimator? = null
     private var complexityLevel: Int = 1
-    private var simulatedCpuLoadMs: Long = 0L
+    private var simulatedLayoutDelayMs: Long = 0L
 
     private var graphicsLayerNode: LayoutNode? = null
     private val leftTrail = ArrayDeque<Float>()
@@ -262,17 +262,17 @@ class MainActivity : Activity() {
             setOnClickListener { cycleComplexity() }
         }
 
-        cpuLoadButton = Button(this).apply {
-            text = "🔥 CPU Delay: 0ms"
+        layoutDelayButton = Button(this).apply {
+            text = "🔥 Layout delay: 0ms"
             textSize = 11f
             setBackgroundColor(Color.parseColor("#334155"))
             setTextColor(Color.WHITE)
-            setOnClickListener { cycleCpuLoad() }
+            setOnClickListener { cycleLayoutDelay() }
         }
 
         buttonLayout.addView(animateButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(2, 0, 2, 0) })
         buttonLayout.addView(complexityButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.4f).apply { setMargins(2, 0, 2, 0) })
-        buttonLayout.addView(cpuLoadButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.4f).apply { setMargins(2, 0, 2, 0) })
+        buttonLayout.addView(layoutDelayButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.4f).apply { setMargins(2, 0, 2, 0) })
         rootLayout.addView(buttonLayout)
 
         setContentView(rootLayout)
@@ -570,34 +570,34 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun cycleCpuLoad() {
-        simulatedCpuLoadMs = when (simulatedCpuLoadMs) {
+    private fun cycleLayoutDelay() {
+        simulatedLayoutDelayMs = when (simulatedLayoutDelayMs) {
             0L -> 8L
             8L -> 20L
             else -> 0L
         }
-        when (simulatedCpuLoadMs) {
+        when (simulatedLayoutDelayMs) {
             0L -> {
-                cpuLoadButton.text = "🔥 CPU Delay: 0ms"
-                cpuLoadButton.setBackgroundColor(Color.parseColor("#334155"))
+                layoutDelayButton.text = "🔥 Layout delay: 0ms"
+                layoutDelayButton.setBackgroundColor(Color.parseColor("#334155"))
             }
             8L -> {
-                cpuLoadButton.text = "🔥 CPU Delay: 8ms"
-                cpuLoadButton.setBackgroundColor(Color.parseColor("#D97706"))
+                layoutDelayButton.text = "🔥 Layout delay: 8ms"
+                layoutDelayButton.setBackgroundColor(Color.parseColor("#D97706"))
             }
             20L -> {
-                cpuLoadButton.text = "🔥 CPU Delay: 20ms (JANK)"
-                cpuLoadButton.setBackgroundColor(Color.parseColor("#DC2626"))
+                layoutDelayButton.text = "🔥 Layout delay: 20ms (JANK)"
+                layoutDelayButton.setBackgroundColor(Color.parseColor("#DC2626"))
             }
         }
 
-        // Send CPU load directly to :right_cpu process
+        // Send Layout delay directly to :right_cpu process
         rightServiceBinder?.let { service ->
             val data = Parcel.obtain()
             val reply = Parcel.obtain()
             try {
-                data.writeLong(simulatedCpuLoadMs)
-                service.transact(RightCpuService.TRANSACTION_SET_CPU_LOAD, data, reply, 0)
+                data.writeLong(simulatedLayoutDelayMs)
+                service.transact(RightCpuService.TRANSACTION_SET_LAYOUT_DELAY, data, reply, 0)
             } catch (_: Exception) {}
             finally {
                 data.recycle()

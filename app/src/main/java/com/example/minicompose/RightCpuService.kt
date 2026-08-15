@@ -39,7 +39,7 @@ class RightCpuService : Service() {
     companion object {
         const val TRANSACTION_CREATE_SURFACE = 1
         const val TRANSACTION_SET_COMPLEXITY = 2
-        const val TRANSACTION_SET_CPU_LOAD = 3
+        const val TRANSACTION_SET_LAYOUT_DELAY = 3
         const val TRANSACTION_GET_STATS = 4
         private const val TAG = "RightCpuProcess"
     }
@@ -51,7 +51,7 @@ class RightCpuService : Service() {
     private var animator: ValueAnimator? = null
     private var animationProgress: Float = 0f
     private var complexityLevel: Int = 1
-    private var simulatedCpuLoadMs: Long = 0L
+    private var simulatedLayoutDelayMs: Long = 0L
 
     private var viewWidth: Int = 0
     private var viewHeight: Int = 0
@@ -111,9 +111,9 @@ class RightCpuService : Service() {
                     reply?.writeNoException()
                     return true
                 }
-                TRANSACTION_SET_CPU_LOAD -> {
-                    val loadMs = data.readLong()
-                    mainHandler.post { simulatedCpuLoadMs = loadMs }
+                TRANSACTION_SET_LAYOUT_DELAY -> {
+                    val delayMs = data.readLong()
+                    mainHandler.post { simulatedLayoutDelayMs = delayMs }
                     reply?.writeNoException()
                     return true
                 }
@@ -226,9 +226,9 @@ class RightCpuService : Service() {
             width = cardWidth
             height = cardHeight
             measureBlock = { pw, ph ->
-                if (simulatedCpuLoadMs > 0) {
+                if (simulatedLayoutDelayMs > 0) {
                     val start = System.nanoTime()
-                    val targetNs = simulatedCpuLoadMs * 1_000_000L
+                    val targetNs = simulatedLayoutDelayMs * 1_000_000L
                     var dummy = 0.0
                     while (System.nanoTime() - start < targetNs) {
                         dummy += Math.sin(dummy + 1.0)

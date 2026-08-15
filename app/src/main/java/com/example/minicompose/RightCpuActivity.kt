@@ -42,7 +42,7 @@ class RightCpuActivity : Activity() {
     private lateinit var composeView: MiniComposeView
     private lateinit var statsText: TextView
     private lateinit var processHeader: TextView
-    private lateinit var cpuLoadButton: Button
+    private lateinit var layoutDelayButton: Button
     private lateinit var complexityButton: Button
 
     private var animationProgress: Float = 0f
@@ -51,8 +51,8 @@ class RightCpuActivity : Activity() {
     // Layout tree complexity: 0 = Light (~100 nodes), 1 = Medium (~500 nodes), 2 = Heavy (~1000 nodes)
     private var complexityLevel: Int = 1
 
-    // Simulated additional main-thread CPU layout calculation delay in ms
-    private var simulatedCpuLoadMs: Long = 0L
+    // Simulated additional main-thread layout calculation delay in ms
+    private var simulatedLayoutDelayMs: Long = 0L
 
     private var offsetNode: LayoutNode? = null
     private val motionTrail = ArrayDeque<Float>()
@@ -134,17 +134,17 @@ class RightCpuActivity : Activity() {
             setOnClickListener { cycleComplexity() }
         }
 
-        cpuLoadButton = Button(this).apply {
-            text = "🔥 CPU Load: 0ms"
+        layoutDelayButton = Button(this).apply {
+            text = "🔥 Layout delay: 0ms"
             textSize = 11f
             setBackgroundColor(Color.parseColor("#334155"))
             setTextColor(Color.WHITE)
-            setOnClickListener { cycleCpuLoad() }
+            setOnClickListener { cycleLayoutDelay() }
         }
 
         buttonRow1.addView(animateButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(2, 0, 2, 0) })
         buttonRow1.addView(complexityButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.3f).apply { setMargins(2, 0, 2, 0) })
-        buttonRow1.addView(cpuLoadButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.1f).apply { setMargins(2, 0, 2, 0) })
+        buttonRow1.addView(layoutDelayButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.3f).apply { setMargins(2, 0, 2, 0) })
         rootLayout.addView(buttonRow1)
 
         val splitScreenBtn = Button(this).apply {
@@ -242,9 +242,9 @@ class RightCpuActivity : Activity() {
             height = cardHeight
 
             measureBlock = { pw, ph ->
-                if (simulatedCpuLoadMs > 0) {
+                if (simulatedLayoutDelayMs > 0) {
                     val start = System.nanoTime()
-                    val targetNs = simulatedCpuLoadMs * 1_000_000L
+                    val targetNs = simulatedLayoutDelayMs * 1_000_000L
                     var dummy = 0.0
                     while (System.nanoTime() - start < targetNs) {
                         dummy += Math.sin(dummy + 1.0)
@@ -428,24 +428,24 @@ class RightCpuActivity : Activity() {
         startAnimation()
     }
 
-    private fun cycleCpuLoad() {
-        simulatedCpuLoadMs = when (simulatedCpuLoadMs) {
+    private fun cycleLayoutDelay() {
+        simulatedLayoutDelayMs = when (simulatedLayoutDelayMs) {
             0L -> 8L
             8L -> 20L
             else -> 0L
         }
-        when (simulatedCpuLoadMs) {
+        when (simulatedLayoutDelayMs) {
             0L -> {
-                cpuLoadButton.text = "🔥 CPU Load: 0ms"
-                cpuLoadButton.setBackgroundColor(Color.parseColor("#334155"))
+                layoutDelayButton.text = "🔥 Layout delay: 0ms"
+                layoutDelayButton.setBackgroundColor(Color.parseColor("#334155"))
             }
             8L -> {
-                cpuLoadButton.text = "🔥 CPU Load: 8ms"
-                cpuLoadButton.setBackgroundColor(Color.parseColor("#D97706"))
+                layoutDelayButton.text = "🔥 Layout delay: 8ms"
+                layoutDelayButton.setBackgroundColor(Color.parseColor("#D97706"))
             }
             20L -> {
-                cpuLoadButton.text = "🔥 CPU Load: 20ms (JANK)"
-                cpuLoadButton.setBackgroundColor(Color.parseColor("#DC2626"))
+                layoutDelayButton.text = "🔥 Layout delay: 20ms (JANK)"
+                layoutDelayButton.setBackgroundColor(Color.parseColor("#DC2626"))
             }
         }
     }
