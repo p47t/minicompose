@@ -413,7 +413,7 @@ class RightCpuActivity : Activity() {
         if (simulatedDrawDelayMs > 0) {
             val extraPasses = when (simulatedDrawDelayMs) {
                 8L -> 200
-                20L -> 600
+                20L -> 400
                 else -> 0
             }
             val extraPaint = Paint().apply {
@@ -549,7 +549,7 @@ class RightCpuActivity : Activity() {
                 drawDelayButton.setBackgroundColor(Color.parseColor("#D97706"))
             }
             20L -> {
-                drawDelayButton.text = "🎨 Draw load: +600 DL (JANK)"
+                drawDelayButton.text = "🎨 Draw load: +400 DL (JANK)"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#DC2626"))
             }
         }

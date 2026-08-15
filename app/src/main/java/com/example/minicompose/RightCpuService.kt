@@ -393,7 +393,7 @@ class RightCpuService : Service() {
         if (simulatedDrawDelayMs > 0) {
             val extraPasses = when (simulatedDrawDelayMs) {
                 8L -> 200
-                20L -> 600
+                20L -> 400
                 else -> 0
             }
             val extraPaint = Paint().apply {

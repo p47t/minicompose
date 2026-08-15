@@ -675,7 +675,7 @@ class MainActivity : Activity() {
                 drawDelayButton.setBackgroundColor(Color.parseColor("#D97706"))
             }
             20L -> {
-                drawDelayButton.text = "🎨 Draw load: +600 DL (JANK)"
+                drawDelayButton.text = "🎨 Draw load: +400 DL (JANK)"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#DC2626"))
             }
         }
