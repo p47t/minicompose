@@ -399,7 +399,7 @@ class RightCpuService : Service() {
             }
             for (p in 0 until drawLoadPasses) {
                 val lineY = 40f + (p % 20) * 8f
-                val formattedText = "DL Record #$p [DisplayList Cmd]"
+                val formattedText = "Component Node #$p data binding, constraint bounds, typography glyph resolution"
                 extraPaint.measureText(formattedText)
                 canvas.drawRect(8f, lineY, w - 8f, lineY + 5f, extraPaint)
             }

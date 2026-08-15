@@ -571,7 +571,7 @@ class MainActivity : Activity() {
             }
             for (p in 0 until drawLoadPasses) {
                 val lineY = 40f + (p % 20) * 8f
-                val formattedText = "DL Record #$p [DisplayList Cmd]"
+                val formattedText = "Component Node #$p data binding, constraint bounds, typography glyph resolution"
                 extraPaint.measureText(formattedText)
                 canvas.drawRect(8f, lineY, w - 8f, lineY + 5f, extraPaint)
             }
@@ -692,8 +692,8 @@ class MainActivity : Activity() {
 
     private fun cycleDrawLoad() {
         drawLoadPasses = when (drawLoadPasses) {
-            0 -> 100
-            100 -> 200
+            0 -> 500
+            500 -> 1500
             else -> 0
         }
         when (drawLoadPasses) {
@@ -701,12 +701,12 @@ class MainActivity : Activity() {
                 drawDelayButton.text = "🎨 Draw load: Normal"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#334155"))
             }
-            100 -> {
-                drawDelayButton.text = "🎨 Draw load: +100 DL"
+            500 -> {
+                drawDelayButton.text = "🎨 Draw load: +500 DL"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#D97706"))
             }
-            200 -> {
-                drawDelayButton.text = "🎨 Draw load: +200 DL"
+            1500 -> {
+                drawDelayButton.text = "🎨 Draw load: +1500 DL"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#DC2626"))
             }
         }
