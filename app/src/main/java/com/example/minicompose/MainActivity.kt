@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.Typeface
 import android.os.Build
@@ -421,7 +422,17 @@ class MainActivity : Activity() {
         val cardNode = LayoutNode("GpuCard").apply {
             width = cardWidth
             height = cardHeight
-            measureBlock = { pw, ph -> Pair(cardWidth, cardHeight) }
+            measureBlock = { pw, ph ->
+                if (simulatedLayoutDelayMs > 0) {
+                    val start = System.nanoTime()
+                    val targetNs = simulatedLayoutDelayMs * 1_000_000L
+                    var dummy = 0.0
+                    while (System.nanoTime() - start < targetNs) {
+                        dummy += Math.sin(dummy + 1.0)
+                    }
+                }
+                Pair(cardWidth, cardHeight)
+            }
             layoutBlock = { parent ->
                 var currY = 44
                 for (child in parent.children) {
@@ -549,6 +560,34 @@ class MainActivity : Activity() {
             yOffset += 15f
             if (yOffset > h - 36f) break
         }
+
+        // DisplayList Rebuild Simulation: Record extra drawing commands & text glyphs into Skia HWUI DisplayList
+        if (drawLoadPasses > 0) {
+            val extraPaint = Paint().apply {
+                color = Color.parseColor("#3B82F6")
+                alpha = 20
+                textSize = 7.5f
+                style = Paint.Style.STROKE
+                strokeWidth = 1f
+                isAntiAlias = true
+            }
+            val extraTextPaint = Paint().apply {
+                color = Color.parseColor("#93C5FD")
+                alpha = 25
+                textSize = 7.5f
+                isAntiAlias = true
+            }
+            val path = Path()
+            for (p in 0 until drawLoadPasses) {
+                val lineY = 38f + (p % 25) * 6.5f
+                path.reset()
+                path.moveTo(8f, lineY)
+                path.lineTo(w - 8f, lineY + 2f)
+                canvas.getNativeCanvas().drawPath(path, extraPaint)
+                canvas.drawRoundRect(8f, lineY, w - 8f, lineY + 5f, 2f, 2f, extraPaint)
+                canvas.drawText("DL Command #$p [Skia DL]", 14f, lineY + 4f, extraTextPaint)
+            }
+        }
     }
 
     private fun toggleAnimation() {
@@ -644,6 +683,10 @@ class MainActivity : Activity() {
             }
         }
 
+        // Refresh Left tree once to apply new layout parameters
+        graphicsLayerNode?.markNeedsLayout()
+        leftComposeView.getAndroidComposeView()?.invalidateCompose()
+
         // Send Layout delay directly to :right_cpu process
         rightServiceBinder?.let { service ->
             val data = Parcel.obtain()
@@ -679,6 +722,11 @@ class MainActivity : Activity() {
                 drawDelayButton.setBackgroundColor(Color.parseColor("#DC2626"))
             }
         }
+
+        // Re-record Left GraphicsLayer DisplayList ONCE with the new DL commands
+        graphicsLayerNode?.needsRedraw = true
+        graphicsLayerNode?.graphicsLayer?.isDirty = true
+        leftComposeView.getAndroidComposeView()?.invalidateCompose()
 
         // Send Draw load passes directly to :right_cpu process
         rightServiceBinder?.let { service ->
