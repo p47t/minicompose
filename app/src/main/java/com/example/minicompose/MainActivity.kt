@@ -78,7 +78,7 @@ class MainActivity : Activity() {
     private var leftAnimator: ValueAnimator? = null
     private var complexityLevel: Int = 1
     private var simulatedLayoutDelayMs: Long = 0L
-    private var simulatedDrawDelayMs: Long = 0L
+    private var drawLoadPasses: Int = 0
 
     private var graphicsLayerNode: LayoutNode? = null
     private val leftTrail = ArrayDeque<Float>()
@@ -291,7 +291,7 @@ class MainActivity : Activity() {
             textSize = 11f
             setBackgroundColor(Color.parseColor("#334155"))
             setTextColor(Color.WHITE)
-            setOnClickListener { cycleDrawDelay() }
+            setOnClickListener { cycleDrawLoad() }
         }
 
         buttonRow2.addView(layoutDelayButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(2, 0, 2, 0) })
@@ -659,34 +659,34 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun cycleDrawDelay() {
-        simulatedDrawDelayMs = when (simulatedDrawDelayMs) {
-            0L -> 8L
-            8L -> 20L
-            else -> 0L
+    private fun cycleDrawLoad() {
+        drawLoadPasses = when (drawLoadPasses) {
+            0 -> 100
+            100 -> 200
+            else -> 0
         }
-        when (simulatedDrawDelayMs) {
-            0L -> {
+        when (drawLoadPasses) {
+            0 -> {
                 drawDelayButton.text = "🎨 Draw load: Normal"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#334155"))
             }
-            8L -> {
-                drawDelayButton.text = "🎨 Draw load: +200 DL"
+            100 -> {
+                drawDelayButton.text = "🎨 Draw load: +100 DL"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#D97706"))
             }
-            20L -> {
-                drawDelayButton.text = "🎨 Draw load: +400 DL (JANK)"
+            200 -> {
+                drawDelayButton.text = "🎨 Draw load: +200 DL (JANK)"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#DC2626"))
             }
         }
 
-        // Send Draw delay (DisplayList rebuild simulation) directly to :right_cpu process
+        // Send Draw load passes directly to :right_cpu process
         rightServiceBinder?.let { service ->
             val data = Parcel.obtain()
             val reply = Parcel.obtain()
             try {
-                data.writeLong(simulatedDrawDelayMs)
-                service.transact(RightCpuService.TRANSACTION_SET_DRAW_DELAY, data, reply, 0)
+                data.writeInt(drawLoadPasses)
+                service.transact(RightCpuService.TRANSACTION_SET_DRAW_LOAD, data, reply, 0)
             } catch (_: Exception) {}
             finally {
                 data.recycle()

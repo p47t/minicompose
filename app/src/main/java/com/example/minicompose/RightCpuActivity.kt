@@ -57,7 +57,7 @@ class RightCpuActivity : Activity() {
 
     // Simulated additional main-thread layout calculation delay in ms
     private var simulatedLayoutDelayMs: Long = 0L
-    private var simulatedDrawDelayMs: Long = 0L
+    private var drawLoadPasses: Int = 0
 
     private var offsetNode: LayoutNode? = null
     private val motionTrail = ArrayDeque<Float>()
@@ -163,7 +163,7 @@ class RightCpuActivity : Activity() {
             textSize = 11f
             setBackgroundColor(Color.parseColor("#334155"))
             setTextColor(Color.WHITE)
-            setOnClickListener { cycleDrawDelay() }
+            setOnClickListener { cycleDrawLoad() }
         }
 
         buttonRow2.addView(layoutDelayButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(2, 0, 2, 0) })
@@ -410,12 +410,7 @@ class RightCpuActivity : Activity() {
         }
 
         // DisplayList Rebuild Simulation: Record extra drawing commands & text glyphs into Skia HWUI DisplayList
-        if (simulatedDrawDelayMs > 0) {
-            val extraPasses = when (simulatedDrawDelayMs) {
-                8L -> 200
-                20L -> 400
-                else -> 0
-            }
+        if (drawLoadPasses > 0) {
             val extraPaint = Paint().apply {
                 color = Color.parseColor("#EF4444")
                 alpha = 20
@@ -431,7 +426,7 @@ class RightCpuActivity : Activity() {
                 isAntiAlias = true
             }
             val path = Path()
-            for (p in 0 until extraPasses) {
+            for (p in 0 until drawLoadPasses) {
                 val lineY = 38f + (p % 25) * 6.5f
                 path.reset()
                 path.moveTo(8f, lineY)
@@ -533,23 +528,23 @@ class RightCpuActivity : Activity() {
         }
     }
 
-    private fun cycleDrawDelay() {
-        simulatedDrawDelayMs = when (simulatedDrawDelayMs) {
-            0L -> 8L
-            8L -> 20L
-            else -> 0L
+    private fun cycleDrawLoad() {
+        drawLoadPasses = when (drawLoadPasses) {
+            0 -> 100
+            100 -> 200
+            else -> 0
         }
-        when (simulatedDrawDelayMs) {
-            0L -> {
+        when (drawLoadPasses) {
+            0 -> {
                 drawDelayButton.text = "🎨 Draw load: Normal"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#334155"))
             }
-            8L -> {
-                drawDelayButton.text = "🎨 Draw load: +200 DL"
+            100 -> {
+                drawDelayButton.text = "🎨 Draw load: +100 DL"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#D97706"))
             }
-            20L -> {
-                drawDelayButton.text = "🎨 Draw load: +400 DL (JANK)"
+            200 -> {
+                drawDelayButton.text = "🎨 Draw load: +200 DL (JANK)"
                 drawDelayButton.setBackgroundColor(Color.parseColor("#DC2626"))
             }
         }

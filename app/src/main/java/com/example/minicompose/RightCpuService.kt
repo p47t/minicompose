@@ -42,7 +42,7 @@ class RightCpuService : Service() {
         const val TRANSACTION_SET_COMPLEXITY = 2
         const val TRANSACTION_SET_LAYOUT_DELAY = 3
         const val TRANSACTION_GET_STATS = 4
-        const val TRANSACTION_SET_DRAW_DELAY = 5
+        const val TRANSACTION_SET_DRAW_LOAD = 5
         const val TRANSACTION_SET_ANIMATING = 6
         private const val TAG = "RightCpuProcess"
     }
@@ -55,7 +55,7 @@ class RightCpuService : Service() {
     private var animationProgress: Float = 0f
     private var complexityLevel: Int = 1
     private var simulatedLayoutDelayMs: Long = 0L
-    private var simulatedDrawDelayMs: Long = 0L
+    private var drawLoadPasses: Int = 0
 
     private var viewWidth: Int = 0
     private var viewHeight: Int = 0
@@ -121,9 +121,9 @@ class RightCpuService : Service() {
                     reply?.writeNoException()
                     return true
                 }
-                TRANSACTION_SET_DRAW_DELAY -> {
-                    val delayMs = data.readLong()
-                    mainHandler.post { simulatedDrawDelayMs = delayMs }
+                TRANSACTION_SET_DRAW_LOAD -> {
+                    val passes = data.readInt()
+                    mainHandler.post { drawLoadPasses = passes }
                     reply?.writeNoException()
                     return true
                 }
@@ -390,12 +390,7 @@ class RightCpuService : Service() {
         }
 
         // DisplayList Rebuild Simulation: Record extra drawing commands & text glyphs into Skia HWUI DisplayList
-        if (simulatedDrawDelayMs > 0) {
-            val extraPasses = when (simulatedDrawDelayMs) {
-                8L -> 200
-                20L -> 400
-                else -> 0
-            }
+        if (drawLoadPasses > 0) {
             val extraPaint = Paint().apply {
                 color = Color.parseColor("#EF4444")
                 alpha = 20
@@ -411,7 +406,7 @@ class RightCpuService : Service() {
                 isAntiAlias = true
             }
             val path = Path()
-            for (p in 0 until extraPasses) {
+            for (p in 0 until drawLoadPasses) {
                 val lineY = 38f + (p % 25) * 6.5f
                 path.reset()
                 path.moveTo(8f, lineY)
