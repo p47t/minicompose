@@ -7,17 +7,37 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:resizeableActivity="true"
+        android:supportsPictureInPicture="true"
         android:theme="@style/Theme.MiniCompose">
+
+        <!-- Process 1: Left GPU Activity (:left_gpu) -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:process=":left_gpu"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
             android:hardwareAccelerated="true"
+            android:label="⚡ GPU (graphicsLayer)"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Process 2: Right CPU Activity (:right_cpu) -->
+        <activity
+            android:name=".RightCpuActivity"
+            android:exported="true"
+            android:process=":right_cpu"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:hardwareAccelerated="true"
+            android:label="⚠️ CPU (offset)"
+            android:windowSoftInputMode="adjustResize" />
+
     </application>
 
 </manifest>

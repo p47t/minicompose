@@ -7,7 +7,6 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -22,27 +21,28 @@ import android.widget.TextView
 
 /**
  * ══════════════════════════════════════════════════════════════════════════════
- *  Main / Left GPU Activity — Process: `:left_gpu`
+ *  Right CPU Activity — Process: `:right_cpu`
  * ══════════════════════════════════════════════════════════════════════════════
  *
  * Runs in its own dedicated Linux OS Process (isolated PID, ART VM, UI Thread,
  * and Choreographer).
  *
- * Demonstrates Modifier.graphicsLayer (Draw Phase / GPU):
- * - Updates only native C++ RenderNode float header properties (<1µs).
- * - Zero layout passes during animation (0 µs layout time).
- * - Always maintains solid 60 FPS, completely unaffected even when `:right_cpu`
- *   is dropping frames under heavy CPU load in split-screen!
+ * Demonstrates Modifier.offset (Layout Phase / CPU):
+ * - Every frame marks the subtree dirty, forcing recursive constraint
+ *   solving, text measurement (Paint.measureText), and child coordinate placement.
+ * - Under heavy 1000-node layout and CPU load, drops frame rate to 15-30 FPS,
+ *   completely isolated from the `:left_gpu` process!
  */
-class MainActivity : Activity() {
+class RightCpuActivity : Activity() {
 
     companion object {
-        private const val TAG = "LeftGpuProcess"
+        private const val TAG = "RightCpuProcess"
     }
 
     private lateinit var composeView: MiniComposeView
     private lateinit var statsText: TextView
     private lateinit var processHeader: TextView
+    private lateinit var cpuLoadButton: Button
     private lateinit var complexityButton: Button
 
     private var animationProgress: Float = 0f
@@ -51,7 +51,10 @@ class MainActivity : Activity() {
     // Layout tree complexity: 0 = Light (~100 nodes), 1 = Medium (~500 nodes), 2 = Heavy (~1000 nodes)
     private var complexityLevel: Int = 1
 
-    private var graphicsLayerNode: LayoutNode? = null
+    // Simulated additional main-thread CPU layout calculation delay in ms
+    private var simulatedCpuLoadMs: Long = 0L
+
+    private var offsetNode: LayoutNode? = null
     private val motionTrail = ArrayDeque<Float>()
 
     private val handler = Handler(Looper.getMainLooper())
@@ -70,13 +73,13 @@ class MainActivity : Activity() {
 
         // ── Process & Architecture Header ──────────────────────────────────
         processHeader = TextView(this).apply {
-            text = "⚡ PROCESS: :left_gpu | PID: ${Process.myPid()}\nModifier.graphicsLayer (GPU / Draw Phase)"
+            text = "⚠️ PROCESS: :right_cpu | PID: ${Process.myPid()}\nModifier.offset (CPU / Layout Phase)"
             textSize = 13f
-            setTextColor(Color.parseColor("#60A5FA"))
+            setTextColor(Color.parseColor("#F87171"))
             typeface = Typeface.MONOSPACE
             gravity = Gravity.CENTER
             setPadding(16, 8, 16, 8)
-            setBackgroundColor(Color.parseColor("#1E293B"))
+            setBackgroundColor(Color.parseColor("#1E1B4B"))
         }
         rootLayout.addView(processHeader, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -98,9 +101,9 @@ class MainActivity : Activity() {
 
         // ── Stats Telemetry HUD ─────────────────────────────────────────────
         statsText = TextView(this).apply {
-            text = "FPS: 60 fps | Passes: 0/s\nLayout: 0 µs (SKIPPED)\nDraw: 0 µs"
+            text = "FPS: 60 fps | Passes: 60/s\nLayout: 0 µs (RE-MEASURING)\nDraw: 0 µs"
             textSize = 11f
-            setTextColor(Color.parseColor("#4ADE80"))
+            setTextColor(Color.parseColor("#FCA5A5"))
             typeface = Typeface.MONOSPACE
             gravity = Gravity.CENTER
             setPadding(8, 8, 8, 8)
@@ -131,24 +134,25 @@ class MainActivity : Activity() {
             setOnClickListener { cycleComplexity() }
         }
 
-        val resetButton = Button(this).apply {
-            text = "↺ Reset"
+        cpuLoadButton = Button(this).apply {
+            text = "🔥 CPU Load: 0ms"
             textSize = 11f
-            setOnClickListener { resetAnimation() }
+            setBackgroundColor(Color.parseColor("#334155"))
+            setTextColor(Color.WHITE)
+            setOnClickListener { cycleCpuLoad() }
         }
 
         buttonRow1.addView(animateButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(2, 0, 2, 0) })
-        buttonRow1.addView(complexityButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.8f).apply { setMargins(2, 0, 2, 0) })
-        buttonRow1.addView(resetButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(2, 0, 2, 0) })
+        buttonRow1.addView(complexityButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.3f).apply { setMargins(2, 0, 2, 0) })
+        buttonRow1.addView(cpuLoadButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.1f).apply { setMargins(2, 0, 2, 0) })
         rootLayout.addView(buttonRow1)
 
-        // ── Launch Split Screen Multi-Process Button ───────────────────────
         val splitScreenBtn = Button(this).apply {
-            text = "🚀 Launch CPU Process Side-by-Side (Split Screen)"
+            text = "⚡ Launch GPU Process Adjacent"
             textSize = 11f
-            setBackgroundColor(Color.parseColor("#DC2626"))
+            setBackgroundColor(Color.parseColor("#1E3A8A"))
             setTextColor(Color.WHITE)
-            setOnClickListener { launchRightCpuAdjacent() }
+            setOnClickListener { launchLeftGpuAdjacent() }
         }
         rootLayout.addView(splitScreenBtn, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -165,12 +169,8 @@ class MainActivity : Activity() {
         startStatsUpdater()
     }
 
-    /**
-     * Launches RightCpuActivity into the adjacent split-screen window
-     * in its own separate OS process (:right_cpu).
-     */
-    private fun launchRightCpuAdjacent() {
-        val intent = Intent(this, RightCpuActivity::class.java).apply {
+    private fun launchLeftGpuAdjacent() {
+        val intent = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
@@ -199,14 +199,14 @@ class MainActivity : Activity() {
 
                 // Motion trail dots
                 val dotPaint = Paint().apply {
-                    color = Color.parseColor("#38BDF8")
+                    color = Color.parseColor("#FB7185")
                     style = Paint.Style.FILL
                     isAntiAlias = true
                 }
                 synchronized(motionTrail) {
                     motionTrail.forEachIndexed { index, yPos ->
                         dotPaint.alpha = (255 * (index + 1) / (motionTrail.size.coerceAtLeast(1))).coerceIn(30, 255)
-                        canvas.getNativeCanvas().drawCircle(w / 2f - cardWidth / 2f - 10f, yPos, 4f, dotPaint)
+                        canvas.getNativeCanvas().drawCircle(w / 2f + cardWidth / 2f + 10f, yPos, 4f, dotPaint)
                     }
                 }
             }
@@ -215,21 +215,10 @@ class MainActivity : Activity() {
                 x = w / 2 - cardWidth / 2
                 y = h / 2 - cardHeight / 2
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    graphicsLayer = GraphicsLayer("GpuCard")
-                }
-
                 drawBlock = { canvas ->
                     drawCardVisuals(canvas, cardWidth, cardHeight)
-                }
 
-                graphicsLayerBlock = { layer ->
-                    val amplitude = h * 0.26f
-                    val currentY = Math.sin(animationProgress.toDouble() * Math.PI * 2).toFloat() * amplitude
-                    layer.translationY = currentY
-                    layer.rotationZ = animationProgress * 360f
-
-                    val centerScreenY = (h / 2f) + currentY
+                    val centerScreenY = (h / 2f) + (offsetNode?.offsetY ?: 0)
                     synchronized(motionTrail) {
                         motionTrail.addLast(centerScreenY)
                         if (motionTrail.size > 26) motionTrail.removeFirst()
@@ -237,7 +226,7 @@ class MainActivity : Activity() {
                 }
             }
             root.addChild(cardNode)
-            graphicsLayerNode = cardNode
+            offsetNode = cardNode
         }
     }
 
@@ -248,9 +237,10 @@ class MainActivity : Activity() {
             else -> 198 // 1001 nodes
         }
 
-        val cardNode = LayoutNode("GpuCard").apply {
+        val cardNode = LayoutNode("CpuCard").apply {
             width = cardWidth
             height = cardHeight
+
             measureBlock = { pw, ph -> Pair(cardWidth, cardHeight) }
             layoutBlock = { parent ->
                 var currY = 44
@@ -277,7 +267,7 @@ class MainActivity : Activity() {
         header.addChild(LayoutNode("Timestamp").apply { measureBlock = { _, _ -> Pair(40, 12) } })
         cardNode.addChild(header)
 
-        // Content Rows (5 nodes per row)
+        // Multiple Content Items (5 nodes per row)
         for (i in 0 until rowCount) {
             val itemRow = LayoutNode("ItemRow_$i").apply {
                 width = cardWidth - 20
@@ -313,14 +303,14 @@ class MainActivity : Activity() {
 
     private fun drawCardVisuals(canvas: MiniCanvas, w: Int, h: Int) {
         val bgPaint = Paint().apply {
-            color = Color.parseColor("#1D4ED8")
+            color = Color.parseColor("#991B1B")
             style = Paint.Style.FILL
             isAntiAlias = true
         }
         canvas.drawRoundRect(0f, 0f, w.toFloat(), h.toFloat(), 18f, 18f, bgPaint)
 
         val borderPaint = Paint().apply {
-            color = Color.parseColor("#60A5FA")
+            color = Color.parseColor("#F87171")
             style = Paint.Style.STROKE
             strokeWidth = 2.5f
             isAntiAlias = true
@@ -328,7 +318,7 @@ class MainActivity : Activity() {
         canvas.drawRoundRect(1.5f, 1.5f, w.toFloat() - 1.5f, h.toFloat() - 1.5f, 16.5f, 16.5f, borderPaint)
 
         val avatarPaint = Paint().apply {
-            color = Color.parseColor("#3B82F6")
+            color = Color.parseColor("#EF4444")
             style = Paint.Style.FILL
             isAntiAlias = true
         }
@@ -340,14 +330,14 @@ class MainActivity : Activity() {
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
             isAntiAlias = true
         }
-        canvas.drawText("GPU Card (:left_gpu)", 46f, 22f, titlePaint)
+        canvas.drawText("CPU Card (:right_cpu)", 46f, 22f, titlePaint)
 
         val modePaint = Paint().apply {
-            color = Color.parseColor("#93C5FD")
+            color = Color.parseColor("#FCA5A5")
             textSize = 11f
             isAntiAlias = true
         }
-        canvas.drawText("PID ${Process.myPid()} | 0 µs Layout Phase", 46f, 34f, modePaint)
+        canvas.drawText("PID ${Process.myPid()} | Re-measuring Subtree", 46f, 34f, modePaint)
 
         val textRowPaint = Paint().apply {
             color = Color.parseColor("#CBD5E1")
@@ -355,12 +345,12 @@ class MainActivity : Activity() {
             isAntiAlias = true
         }
         val tagBgPaint = Paint().apply {
-            color = Color.parseColor("#1E3A8A")
+            color = Color.parseColor("#7F1D1D")
             style = Paint.Style.FILL
             isAntiAlias = true
         }
         val tagTextPaint = Paint().apply {
-            color = Color.parseColor("#93C5FD")
+            color = Color.parseColor("#FCA5A5")
             textSize = 8.5f
             textAlign = Paint.Align.CENTER
             typeface = Typeface.create("sans-serif", Typeface.BOLD)
@@ -395,10 +385,31 @@ class MainActivity : Activity() {
             repeatMode = ValueAnimator.RESTART
             interpolator = LinearInterpolator()
             addUpdateListener { animation ->
+                if (simulatedCpuLoadMs > 0) {
+                    try {
+                        Thread.sleep(simulatedCpuLoadMs)
+                    } catch (_: InterruptedException) {}
+                }
+
                 animationProgress = animation.animatedValue as Float
+                val viewHeight = composeView.height
+                val amplitude = viewHeight * 0.26f
+                val targetOffsetY = (Math.sin(animationProgress.toDouble() * Math.PI * 2) * amplitude).toInt()
+
+                offsetNode?.let { node ->
+                    node.offsetY = targetOffsetY
+                    markTreeDirty(node)
+                }
                 composeView.getAndroidComposeView()?.invalidateCompose()
             }
             start()
+        }
+    }
+
+    private fun markTreeDirty(node: LayoutNode) {
+        node.markNeedsLayout()
+        for (child in node.children) {
+            markTreeDirty(child)
         }
     }
 
@@ -413,22 +424,26 @@ class MainActivity : Activity() {
         startAnimation()
     }
 
-    private fun resetAnimation() {
-        animator?.cancel()
-        animationProgress = 0f
-
-        synchronized(motionTrail) { motionTrail.clear() }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            graphicsLayerNode?.graphicsLayer?.let { layer ->
-                layer.translationY = 0f
-                layer.rotationZ = 0f
-                layer.scaleX = 1f
-                layer.scaleY = 1f
+    private fun cycleCpuLoad() {
+        simulatedCpuLoadMs = when (simulatedCpuLoadMs) {
+            0L -> 8L
+            8L -> 20L
+            else -> 0L
+        }
+        when (simulatedCpuLoadMs) {
+            0L -> {
+                cpuLoadButton.text = "🔥 CPU Load: 0ms"
+                cpuLoadButton.setBackgroundColor(Color.parseColor("#334155"))
+            }
+            8L -> {
+                cpuLoadButton.text = "🔥 CPU Load: 8ms"
+                cpuLoadButton.setBackgroundColor(Color.parseColor("#D97706"))
+            }
+            20L -> {
+                cpuLoadButton.text = "🔥 CPU Load: 20ms (JANK)"
+                cpuLoadButton.setBackgroundColor(Color.parseColor("#DC2626"))
             }
         }
-
-        composeView.getAndroidComposeView()?.invalidateCompose()
     }
 
     @SuppressLint("SetTextI18n")
@@ -448,12 +463,12 @@ class MainActivity : Activity() {
                     lastLayoutCount = acv.layoutPassCount
 
                     statsText.text = buildString {
-                        appendLine("FPS: $draws fps | Passes: $layouts/s (SKIPPED)")
-                        appendLine("Layout Phase: ${avgLayoutUs} µs")
+                        appendLine("FPS: $draws fps | Passes: $layouts layouts/s")
+                        appendLine("Layout Phase: ${avgLayoutUs} µs (RE-MEASURING)")
                         append("Draw Phase: ${avgDrawUs} µs | Total: ${avgLayoutUs + avgDrawUs} µs")
                     }
 
-                    Log.i(TAG, "[:left_gpu | PID ${Process.myPid()}] FPS=$draws, Layout=${avgLayoutUs}µs ($layouts passes/s), Draw=${avgDrawUs}µs")
+                    Log.i(TAG, "[:right_cpu | PID ${Process.myPid()}] FPS=$draws, Layout=${avgLayoutUs}µs ($layouts passes/s), Draw=${avgDrawUs}µs")
                 }
                 handler.postDelayed(this, 1000)
             }

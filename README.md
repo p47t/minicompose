@@ -6,26 +6,24 @@ This project explores and demonstrates the 5 foundational architectural decision
 
 ---
 
-## 📸 Interactive Benchmark & Demo
+## ⚡ Multi-Process Split-Screen Benchmark
 
-The included Android app provides a live, split-screen microsecond ($\mu\text{s}$) benchmark comparing the two ways to animate elements in Jetpack Compose: **`Modifier.graphicsLayer`** (Draw Phase) vs. **`Modifier.offset`** (Layout Phase).
+To guarantee **100% thread isolation** between `Modifier.graphicsLayer` and `Modifier.offset`, the app runs across **two independent Linux OS processes** launched side-by-side in Android's native Split-Screen mode:
 
 ```
-┌──────────────────────────────────────┬──────────────────────────────────────┐
-│ ⚡ graphicsLayer (Draw Phase / GPU)   │ ⚠️ offset (Layout Phase / CPU)       │
-│                                      │                                      │
-│  [ GPU Rich Component Card ]         │  [ CPU Rich Component Card ]         │
-│                                      │                                      │
-│  • Layout Phase: 0 µs (SKIPPED)      │  • Layout Phase: 8,500+ µs (RE-MEASURE)│
-│  • Draw Phase:   ~200 µs             │  • Draw Phase:   ~250 µs             │
-│  • Passes: 0 layouts / 60 draws/s    │  • Passes: 60 layouts / 60 draws/s   │
-└──────────────────────────────────────┴──────────────────────────────────────┘
+┌─────────────────────────────────────────┬─────────────────────────────────────────┐
+│ Process 1: :left_gpu (PID 10420)        │ Process 2: :right_cpu (PID 10421)       │
+│                                         │                                         │
+│ ⚡ graphicsLayer (Draw Phase / GPU)     │ ⚠️ offset (Layout Phase / CPU)          │
+│                                         │                                         │
+│  • Dedicated Main UI Thread             │  • Dedicated Main UI Thread             │
+│  • Dedicated RenderThread & ART VM      │  • Dedicated RenderThread & ART VM      │
+│  • Layout Phase: 0 µs (SKIPPED)         │  • Layout Phase: ~8,500 µs (RE-MEASURE) │
+│  • Frame Rate: Solid 60.0 FPS           │  • Frame Rate: Drops to ~15–30 FPS      │
+└─────────────────────────────────────────┴─────────────────────────────────────────┘
 ```
 
-### Key Interactive Features:
-* **Deep Component Trees**: Benchmark trees of **100**, **500**, or **1000** `LayoutNode`s with realistic text measurement (`Paint.measureText`) and flex constraint solving.
-* **Live Microsecond ($\mu\text{s}$) Profiling**: Real-time measurement of exact CPU time spent in the Layout Phase vs. Draw Phase using `System.nanoTime()`.
-* **Motion Trail Tracks**: Visual trajectory dots demonstrating sub-pixel smoothness.
+> **Why Multi-Process Isolation Matters:** In a single-process demo, if the CPU side blocks the main thread for 20ms, it stalls the single shared Looper/Choreographer, artificially dragging down both views. With **two OS processes**, `:left_gpu` continues animating at a pristine **60 FPS** on the GPU even while `:right_cpu` is heavily overloaded with 1000-node layout passes and CPU delays.
 
 ---
 
@@ -105,7 +103,8 @@ app/src/main/java/com/example/minicompose/
 ├── GraphicsLayer.kt         # Hardware RenderNode layer & Header Property setters
 ├── LayoutNode.kt            # Compose tree hierarchy, measure policy & dirty flags
 ├── MiniComposeView.kt       # Public MiniComposeView & MiniAndroidComposeView bridge
-└── MainActivity.kt          # Split-screen live benchmark with 100/500/1000 node trees
+├── MainActivity.kt          # Left GPU Activity (:left_gpu process)
+└── RightCpuActivity.kt      # Right CPU Activity (:right_cpu process)
 ```
 
 ---
@@ -124,8 +123,9 @@ app/src/main/java/com/example/minicompose/
    cd minicompose
    ```
 2. Open the project in Android Studio.
-3. Run on an Android Emulator or physical device (Android 10+ / API 29+ recommended for full `RenderNode` hardware acceleration).
-4. Tap **`▶ Animate`** and experiment with the **`📊 Tree Size (100 vs 500 vs 1000 Nodes)`** switcher to observe live microsecond execution time differences.
+3. Run on an Android Emulator or physical device (Android 10+ / API 29+ recommended).
+4. Tap **`🚀 Launch CPU Process Side-by-Side (Split Screen)`** to open both processes adjacent to each other.
+5. Experiment with the **`📊 Tree Size (100 / 500 / 1000 Nodes)`** and **`🔥 CPU Load (0ms / 8ms / 20ms)`** toggles to see real-time process isolation in action!
 
 ---
 
