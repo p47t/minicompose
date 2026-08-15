@@ -205,7 +205,7 @@ class MainActivity : Activity() {
         rightColumn.addView(rightHeader)
 
         rightSurfaceView = SurfaceView(this).apply {
-            setZOrderOnTop(false)
+            setZOrderMediaOverlay(true)
             holder.setFormat(PixelFormat.TRANSLUCENT)
             holder.addCallback(object : SurfaceHolder.Callback {
                 override fun surfaceCreated(holder: SurfaceHolder) {
@@ -291,16 +291,19 @@ class MainActivity : Activity() {
 
     private fun attachSurfaceIfReady() {
         val service = rightServiceBinder ?: return
-        if (rightSurfaceView.width == 0 || rightSurfaceView.height == 0) return
+        val hostToken = rightSurfaceView.hostToken ?: return
+        val w = rightSurfaceView.width
+        val h = rightSurfaceView.height
+        if (w <= 0 || h <= 0) return
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {
                 val data = Parcel.obtain()
                 val reply = Parcel.obtain()
                 try {
-                    data.writeStrongBinder(rightSurfaceView.hostToken)
-                    data.writeInt(rightSurfaceView.width)
-                    data.writeInt(rightSurfaceView.height)
+                    data.writeStrongBinder(hostToken)
+                    data.writeInt(w)
+                    data.writeInt(h)
                     service.transact(RightCpuService.TRANSACTION_CREATE_SURFACE, data, reply, 0)
                     reply.readException()
                     rightPid = reply.readInt()

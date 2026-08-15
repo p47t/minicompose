@@ -18,12 +18,8 @@ import android.os.Parcel
 import android.os.Process
 import android.util.Log
 import android.view.Display
-import android.view.Gravity
 import android.view.SurfaceControlViewHost
 import android.view.animation.LinearInterpolator
-import android.widget.FrameLayout
-import android.widget.LinearLayout
-import android.widget.TextView
 import androidx.annotation.RequiresApi
 
 /**
@@ -31,12 +27,12 @@ import androidx.annotation.RequiresApi
  *  Right CPU Remote Render Service — Process: `:right_cpu`
  * ══════════════════════════════════════════════════════════════════════════════
  *
- * Runs in its own isolated Linux OS Process (separate PID, ART VM, UI Thread,
+ * Runs in its own dedicated Linux OS Process (isolated PID, ART VM, UI Thread,
  * and RenderThread).
  *
- * Uses SurfaceControlViewHost (Android 11+ / API 30+) to render its MiniComposeView
- * hierarchy inside Process :right_cpu and stream the hardware SurfacePackage directly
- * into MainActivity's window for side-by-side multi-process display at the same time.
+ * Uses SurfaceControlViewHost (Android 11+ / API 30+) to render the heavy
+ * `offset` MiniComposeView tree inside Process :right_cpu and stream the hardware
+ * SurfacePackage into MainActivity for 100% thread-isolated side-by-side display.
  */
 class RightCpuService : Service() {
 
@@ -51,12 +47,14 @@ class RightCpuService : Service() {
     private var host: SurfaceControlViewHost? = null
     private var composeView: MiniComposeView? = null
     private var offsetNode: LayoutNode? = null
-    private var statsHeader: TextView? = null
 
     private var animator: ValueAnimator? = null
     private var animationProgress: Float = 0f
     private var complexityLevel: Int = 1
     private var simulatedCpuLoadMs: Long = 0L
+
+    private var viewWidth: Int = 0
+    private var viewHeight: Int = 0
 
     private val motionTrail = ArrayDeque<Float>()
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -77,7 +75,7 @@ class RightCpuService : Service() {
                     val width = data.readInt()
                     val height = data.readInt()
 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && hostToken != null) {
                         val surfacePackage = createEmbeddedViewHierarchy(hostToken, width, height)
                         reply?.writeNoException()
                         reply?.writeInt(Process.myPid())
@@ -119,44 +117,22 @@ class RightCpuService : Service() {
         width: Int,
         height: Int
     ): SurfaceControlViewHost.SurfacePackage? {
+        this.viewWidth = width
+        this.viewHeight = height
+
         val displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
         val display = displayManager.getDisplay(Display.DEFAULT_DISPLAY)
 
         val newHost = SurfaceControlViewHost(this, display, hostToken)
         this.host = newHost
 
-        val rootLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#0F172A"))
-            setPadding(8, 8, 8, 8)
+        val newComposeView = MiniComposeView(this).apply {
+            setBackgroundColor(Color.parseColor("#020617"))
         }
-
-        statsHeader = TextView(this).apply {
-            text = "⚠️ PROCESS: :right_cpu | PID: ${Process.myPid()}\nModifier.offset (CPU / Layout Phase)"
-            textSize = 11f
-            setTextColor(Color.parseColor("#F87171"))
-            typeface = Typeface.MONOSPACE
-            gravity = Gravity.CENTER
-            setPadding(4, 4, 4, 4)
-            setBackgroundColor(Color.parseColor("#1E1B4B"))
-        }
-        rootLayout.addView(statsHeader)
-
-        val newComposeView = MiniComposeView(this)
         this.composeView = newComposeView
 
-        val canvasContainer = FrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#020617"))
-            addView(newComposeView, FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            ))
-        }
-        rootLayout.addView(canvasContainer, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
-        ))
-
-        newHost.setView(rootLayout, width, height)
+        // Directly set MiniComposeView as the root view in SurfaceControlViewHost
+        newHost.setView(newComposeView, width, height)
 
         mainHandler.post {
             setupComposeTree(width, height)
@@ -169,8 +145,8 @@ class RightCpuService : Service() {
 
     private fun setupComposeTree(w: Int, h: Int) {
         val view = composeView ?: return
-        val cardWidth = (w * 0.86).toInt()
-        val cardHeight = (h * 0.44).toInt()
+        val cardWidth = (w * 0.86).toInt().coerceAtLeast(100)
+        val cardHeight = (h * 0.44).toInt().coerceAtLeast(100)
 
         view.setContent { root ->
             root.measureBlock = { pw, ph -> Pair(pw, ph) }
@@ -376,8 +352,8 @@ class RightCpuService : Service() {
 
                 animationProgress = animation.animatedValue as Float
                 val view = composeView ?: return@addUpdateListener
-                val viewHeight = view.height
-                val amplitude = viewHeight * 0.26f
+                val h = if (view.height > 0) view.height else viewHeight
+                val amplitude = h * 0.26f
                 val targetOffsetY = (Math.sin(animationProgress.toDouble() * Math.PI * 2) * amplitude).toInt()
 
                 offsetNode?.let { node ->
@@ -399,8 +375,9 @@ class RightCpuService : Service() {
 
     private fun setComplexity(level: Int) {
         complexityLevel = level
-        val view = composeView ?: return
-        setupComposeTree(view.width, view.height)
+        val w = if (viewWidth > 0) viewWidth else 300
+        val h = if (viewHeight > 0) viewHeight else 600
+        setupComposeTree(w, h)
         startAnimation()
     }
 
@@ -421,8 +398,6 @@ class RightCpuService : Service() {
                     acv.resetTimingWindow()
                     lastDrawCount = acv.drawPassCount
                     lastLayoutCount = acv.layoutPassCount
-
-                    statsHeader?.text = "⚠️ PROCESS: :right_cpu | PID: ${Process.myPid()}\nFPS: $draws fps | Layout: ${currentLayoutUs} µs"
 
                     Log.i(TAG, "[:right_cpu | PID ${Process.myPid()}] FPS=$draws, Layout=${currentLayoutUs}µs ($layouts passes/s), Draw=${currentDrawUs}µs")
                 }
