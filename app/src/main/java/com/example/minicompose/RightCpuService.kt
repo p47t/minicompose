@@ -209,14 +209,6 @@ class RightCpuService : Service() {
                 y = h / 2 - cardHeight / 2
 
                 drawBlock = { canvas ->
-                    if (simulatedDrawDelayMs > 0) {
-                        val start = System.nanoTime()
-                        val targetNs = simulatedDrawDelayMs * 1_000_000L
-                        var dummy = 0.0
-                        while (System.nanoTime() - start < targetNs) {
-                            dummy += Math.cos(dummy + 1.0)
-                        }
-                    }
                     drawCardVisuals(canvas, cardWidth, cardHeight)
 
                     val centerScreenY = (h / 2f) + (offsetNode?.offsetY ?: 0)
@@ -381,6 +373,28 @@ class RightCpuService : Service() {
             canvas.drawText("v${i + 1}", w - 26f, yOffset + 7f, tagTextPaint)
             yOffset += 15f
             if (yOffset > h - 36f) break
+        }
+
+        // DisplayList Rebuild Simulation: Record extra drawing commands & text glyphs into Skia HWUI DisplayList
+        if (simulatedDrawDelayMs > 0) {
+            val extraPasses = when (simulatedDrawDelayMs) {
+                8L -> 30
+                20L -> 80
+                else -> 0
+            }
+            val extraPaint = Paint().apply {
+                color = Color.parseColor("#EF4444")
+                alpha = 25
+                textSize = 8f
+                style = Paint.Style.STROKE
+                strokeWidth = 1f
+                isAntiAlias = true
+            }
+            for (p in 0 until extraPasses) {
+                val lineY = 40f + (p % 15) * 8f
+                canvas.drawRoundRect(8f, lineY, w - 8f, lineY + 6f, 2f, 2f, extraPaint)
+                canvas.drawText("DL Command #$p", 14f, lineY + 5f, extraPaint)
+            }
         }
     }
 
