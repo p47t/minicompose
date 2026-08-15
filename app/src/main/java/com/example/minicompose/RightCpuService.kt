@@ -67,7 +67,6 @@ class RightCpuService : Service() {
     private var currentLayoutsPerSec = 60L
     private var currentLayoutUs = 0L
     private var currentDrawUs = 0L
-    private var currentTimeoutsPerSec = 0L
 
     private var lastDrawCount = 0L
     private var lastLayoutCount = 0L
@@ -148,7 +147,6 @@ class RightCpuService : Service() {
                         reply.writeLong(currentLayoutsPerSec)
                         reply.writeLong(currentLayoutUs)
                         reply.writeLong(currentDrawUs)
-                        reply.writeLong(currentTimeoutsPerSec)
                     }
                     return true
                 }
@@ -471,13 +469,12 @@ class RightCpuService : Service() {
                     currentLayoutsPerSec = layouts
                     currentLayoutUs = if (layouts > 0) acv.windowLayoutTimeUs / layouts else 0L
                     currentDrawUs = if (draws > 0) acv.windowDrawTimeUs / draws else 0L
-                    currentTimeoutsPerSec = acv.windowTimeoutCount
 
                     acv.resetTimingWindow()
                     lastDrawCount = acv.drawPassCount
                     lastLayoutCount = acv.layoutPassCount
 
-                    Log.i(TAG, "[:right_cpu | PID ${Process.myPid()}] FPS=$draws, Layout=${currentLayoutUs}µs ($layouts passes/s), Draw=${currentDrawUs}µs, Timeouts=$currentTimeoutsPerSec")
+                    Log.i(TAG, "[:right_cpu | PID ${Process.myPid()}] FPS=$draws, Layout=${currentLayoutUs}µs ($layouts passes/s), Draw=${currentDrawUs}µs")
                 }
                 mainHandler.postDelayed(this, 1000)
             }
