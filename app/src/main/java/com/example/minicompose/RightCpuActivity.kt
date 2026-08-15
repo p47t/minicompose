@@ -549,6 +549,7 @@ class RightCpuActivity : Activity() {
 
                     val avgLayoutUs = if (layouts > 0) acv.windowLayoutTimeUs / layouts else 0L
                     val avgDrawUs = if (draws > 0) acv.windowDrawTimeUs / draws else 0L
+                    val timeouts = acv.windowTimeoutCount
 
                     acv.resetTimingWindow()
                     lastDrawCount = acv.drawPassCount
@@ -556,11 +557,16 @@ class RightCpuActivity : Activity() {
 
                     statsText.text = buildString {
                         appendLine("FPS: $draws fps | Passes: $layouts layouts/s")
-                        appendLine("Layout Phase: ${avgLayoutUs} µs (RE-MEASURING)")
-                        append("Draw Phase: ${avgDrawUs} µs | Total: ${avgLayoutUs + avgDrawUs} µs")
+                        if (timeouts > 0) {
+                            appendLine("Layout Phase: ${avgLayoutUs} µs (TIMEOUT: $timeouts/s)")
+                            append("Draw Phase: ${avgDrawUs} µs | Reused Prev Frame")
+                        } else {
+                            appendLine("Layout Phase: ${avgLayoutUs} µs (RE-MEASURING)")
+                            append("Draw Phase: ${avgDrawUs} µs | Total: ${avgLayoutUs + avgDrawUs} µs")
+                        }
                     }
 
-                    Log.i(TAG, "[:right_cpu | PID ${Process.myPid()}] FPS=$draws, Layout=${avgLayoutUs}µs ($layouts passes/s), Draw=${avgDrawUs}µs")
+                    Log.i(TAG, "[:right_cpu | PID ${Process.myPid()}] FPS=$draws, Layout=${avgLayoutUs}µs ($layouts passes/s), Draw=${avgDrawUs}µs, Timeouts=$timeouts")
                 }
                 handler.postDelayed(this, 1000)
             }

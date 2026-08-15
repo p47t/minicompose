@@ -1,7 +1,11 @@
 package com.example.minicompose
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.PorterDuff
 import android.os.Build
 import android.util.AttributeSet
 import android.util.Log
@@ -226,10 +230,29 @@ class MiniAndroidComposeView @JvmOverloads constructor(
     var windowDrawTimeUs: Long = 0L
         private set
 
+    /** Timeout fallback configuration: if true, frames that exceed budget reuse previous frame. */
+    var enableTimeoutFallback: Boolean = true
+    var frameTimeoutBudgetUs: Long = 16_000L
+
+    var timeoutFallbackCount: Long = 0
+        private set
+    var windowTimeoutCount: Long = 0
+        private set
+
+    private var previousFrameBitmap: Bitmap? = null
+    private var previousFrameCanvas: Canvas? = null
+    private val fallbackBadgePaint = Paint().apply {
+        color = Color.parseColor("#EF4444")
+        textSize = 24f
+        isAntiAlias = true
+        setShadowLayer(4f, 0f, 2f, Color.BLACK)
+    }
+
     /** Resets the 1-second sample window timing counters. */
     fun resetTimingWindow() {
         windowLayoutTimeUs = 0L
         windowDrawTimeUs = 0L
+        windowTimeoutCount = 0L
     }
 
     init {
@@ -298,6 +321,20 @@ class MiniAndroidComposeView @JvmOverloads constructor(
     override fun dispatchDraw(canvas: Canvas) {
         drawPassCount++
 
+        // Step 0: Check timeout fallback — if previous frame took longer than deadline (16ms)
+        if (enableTimeoutFallback && previousFrameBitmap != null && (lastLayoutTimeUs + lastDrawTimeUs) > frameTimeoutBudgetUs) {
+            timeoutFallbackCount++
+            windowTimeoutCount++
+
+            // Draw cached previous frame snapshot
+            previousFrameBitmap?.let { bmp ->
+                canvas.drawBitmap(bmp, 0f, 0f, null)
+                canvas.drawText("⚠️ Timeout: Reused Previous Frame", 16f, 32f, fallbackBadgePaint)
+            }
+            super.dispatchDraw(canvas)
+            return
+        }
+
         // Step 1: Measure & Layout phase timing (in microseconds)
         // Only executes and times if the tree contains dirty nodes!
         if (root.needsLayout || root.hasDirtyDescendants) {
@@ -314,12 +351,29 @@ class MiniAndroidComposeView @JvmOverloads constructor(
         isDrawingContent = true
         val drawStartNs = System.nanoTime()
         try {
+            // Allocate or update snapshot cache bitmap if needed
+            if (enableTimeoutFallback && width > 0 && height > 0) {
+                if (previousFrameBitmap == null || previousFrameBitmap?.width != width || previousFrameBitmap?.height != height) {
+                    previousFrameBitmap?.recycle()
+                    previousFrameBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                    previousFrameCanvas = Canvas(previousFrameBitmap!!)
+                }
+            }
+
             // Step 2: Bridge the system Canvas to Compose's MiniCanvas
             // using the zero-allocation CanvasHolder pattern.
             canvasHolder.drawInto(canvas) {
                 // Step 3: Recursively draw the entire LayoutNode tree,
                 // starting from the root.
                 root.draw(canvas = this)
+            }
+
+            // Record snapshot for future timeout fallbacks
+            previousFrameCanvas?.let { snapCanvas ->
+                snapCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+                canvasHolder.drawInto(snapCanvas) {
+                    root.draw(canvas = this)
+                }
             }
         } finally {
             isDrawingContent = false

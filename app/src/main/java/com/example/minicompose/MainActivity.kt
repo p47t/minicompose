@@ -787,16 +787,22 @@ class MainActivity : Activity() {
                             val rLayouts = reply.readLong()
                             val rLayoutUs = reply.readLong()
                             val rDrawUs = reply.readLong()
+                            val rTimeouts = if (reply.dataAvail() > 0) reply.readLong() else 0L
 
                             handler.post {
                                 rightStatsText.text = buildString {
                                     appendLine("FPS: $rFps fps | Passes: $rLayouts/s")
-                                    appendLine("Layout: ${rLayoutUs} µs (RE-MEASURING)")
-                                    append("Draw: ${rDrawUs} µs | Total: ${rLayoutUs + rDrawUs} µs")
+                                    if (rTimeouts > 0) {
+                                        appendLine("Layout: ${rLayoutUs} µs (TIMEOUT: $rTimeouts/s)")
+                                        append("Draw: ${rDrawUs} µs | Reused Prev Frame")
+                                    } else {
+                                        appendLine("Layout: ${rLayoutUs} µs (RE-MEASURING)")
+                                        append("Draw: ${rDrawUs} µs | Total: ${rLayoutUs + rDrawUs} µs")
+                                    }
                                 }
                             }
 
-                            Log.i(TAG, "[:right_cpu | PID $rPid] FPS=$rFps, Layout=${rLayoutUs}µs ($rLayouts passes/s), Draw=${rDrawUs}µs")
+                            Log.i(TAG, "[:right_cpu | PID $rPid] FPS=$rFps, Layout=${rLayoutUs}µs ($rLayouts passes/s), Draw=${rDrawUs}µs, Timeouts=$rTimeouts")
                         } catch (_: Exception) {}
                         finally {
                             data.recycle()
