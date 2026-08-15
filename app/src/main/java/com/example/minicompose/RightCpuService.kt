@@ -76,7 +76,24 @@ class RightCpuService : Service() {
                     val height = data.readInt()
 
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && hostToken != null && reply != null) {
-                        val surfacePackage = createEmbeddedViewHierarchy(hostToken, width, height)
+                        val future = java.util.concurrent.CompletableFuture<SurfaceControlViewHost.SurfacePackage?>()
+                        mainHandler.post {
+                            try {
+                                val pkg = createEmbeddedViewHierarchy(hostToken, width, height)
+                                future.complete(pkg)
+                            } catch (e: Throwable) {
+                                Log.e(TAG, "Error initializing SurfaceControlViewHost on main thread", e)
+                                future.complete(null)
+                            }
+                        }
+
+                        val surfacePackage = try {
+                            future.get(3, java.util.concurrent.TimeUnit.SECONDS)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Timeout waiting for SurfaceControlViewHost creation", e)
+                            null
+                        }
+
                         reply.writeNoException()
                         reply.writeInt(Process.myPid())
                         if (surfacePackage != null) {
@@ -141,11 +158,9 @@ class RightCpuService : Service() {
         // Directly set MiniComposeView as the root view in SurfaceControlViewHost
         newHost.setView(newComposeView, width, height)
 
-        mainHandler.post {
-            setupComposeTree(width, height)
-            startAnimation()
-            startStatsUpdater()
-        }
+        setupComposeTree(width, height)
+        startAnimation()
+        startStatsUpdater()
 
         return newHost.surfacePackage
     }
