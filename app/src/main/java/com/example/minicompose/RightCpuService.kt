@@ -249,11 +249,10 @@ class RightCpuService : Service() {
             height = cardHeight
             measureBlock = { pw, ph ->
                 if (simulatedLayoutDelayMs > 0) {
-                    val start = System.nanoTime()
-                    val targetNs = simulatedLayoutDelayMs * 1_000_000L
-                    var dummy = 0.0
-                    while (System.nanoTime() - start < targetNs) {
-                        dummy += Math.sin(dummy + 1.0)
+                    val iterations = (simulatedLayoutDelayMs * 120).toInt()
+                    val textPaint = Paint().apply { textSize = 10f }
+                    for (k in 0 until iterations) {
+                        textPaint.measureText("Solving LayoutNode constraint tree layout bounds flex #$k")
                     }
                 }
                 Pair(cardWidth, cardHeight)
