@@ -41,6 +41,7 @@ class RightCpuService : Service() {
         const val TRANSACTION_SET_COMPLEXITY = 2
         const val TRANSACTION_SET_LAYOUT_DELAY = 3
         const val TRANSACTION_GET_STATS = 4
+        const val TRANSACTION_SET_DRAW_DELAY = 5
         private const val TAG = "RightCpuProcess"
     }
 
@@ -52,6 +53,7 @@ class RightCpuService : Service() {
     private var animationProgress: Float = 0f
     private var complexityLevel: Int = 1
     private var simulatedLayoutDelayMs: Long = 0L
+    private var simulatedDrawDelayMs: Long = 0L
 
     private var viewWidth: Int = 0
     private var viewHeight: Int = 0
@@ -114,6 +116,12 @@ class RightCpuService : Service() {
                 TRANSACTION_SET_LAYOUT_DELAY -> {
                     val delayMs = data.readLong()
                     mainHandler.post { simulatedLayoutDelayMs = delayMs }
+                    reply?.writeNoException()
+                    return true
+                }
+                TRANSACTION_SET_DRAW_DELAY -> {
+                    val delayMs = data.readLong()
+                    mainHandler.post { simulatedDrawDelayMs = delayMs }
                     reply?.writeNoException()
                     return true
                 }
@@ -201,6 +209,14 @@ class RightCpuService : Service() {
                 y = h / 2 - cardHeight / 2
 
                 drawBlock = { canvas ->
+                    if (simulatedDrawDelayMs > 0) {
+                        val start = System.nanoTime()
+                        val targetNs = simulatedDrawDelayMs * 1_000_000L
+                        var dummy = 0.0
+                        while (System.nanoTime() - start < targetNs) {
+                            dummy += Math.cos(dummy + 1.0)
+                        }
+                    }
                     drawCardVisuals(canvas, cardWidth, cardHeight)
 
                     val centerScreenY = (h / 2f) + (offsetNode?.offsetY ?: 0)

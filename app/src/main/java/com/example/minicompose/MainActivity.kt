@@ -65,6 +65,7 @@ class MainActivity : Activity() {
     private lateinit var summaryBanner: TextView
     private lateinit var complexityButton: Button
     private lateinit var layoutDelayButton: Button
+    private lateinit var drawDelayButton: Button
 
     private var rightServiceBinder: IBinder? = null
     private var isRightBound = false
@@ -75,6 +76,7 @@ class MainActivity : Activity() {
     private var leftAnimator: ValueAnimator? = null
     private var complexityLevel: Int = 1
     private var simulatedLayoutDelayMs: Long = 0L
+    private var simulatedDrawDelayMs: Long = 0L
 
     private var graphicsLayerNode: LayoutNode? = null
     private val leftTrail = ArrayDeque<Float>()
@@ -241,11 +243,11 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
         ))
 
-        // ── Interactive Multi-Process Controls ─────────────────────────────
-        val buttonLayout = LinearLayout(this).apply {
+        // ── Interactive Multi-Process Controls (2 Rows) ───────────────────
+        val buttonRow1 = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(12, 4, 12, 28)
+            setPadding(12, 2, 12, 2)
         }
 
         val animateButton = Button(this).apply {
@@ -262,6 +264,16 @@ class MainActivity : Activity() {
             setOnClickListener { cycleComplexity() }
         }
 
+        buttonRow1.addView(animateButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(2, 0, 2, 0) })
+        buttonRow1.addView(complexityButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.8f).apply { setMargins(2, 0, 2, 0) })
+        rootLayout.addView(buttonRow1)
+
+        val buttonRow2 = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(12, 2, 12, 24)
+        }
+
         layoutDelayButton = Button(this).apply {
             text = "🔥 Layout delay: 0ms"
             textSize = 11f
@@ -270,10 +282,17 @@ class MainActivity : Activity() {
             setOnClickListener { cycleLayoutDelay() }
         }
 
-        buttonLayout.addView(animateButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(2, 0, 2, 0) })
-        buttonLayout.addView(complexityButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.4f).apply { setMargins(2, 0, 2, 0) })
-        buttonLayout.addView(layoutDelayButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.4f).apply { setMargins(2, 0, 2, 0) })
-        rootLayout.addView(buttonLayout)
+        drawDelayButton = Button(this).apply {
+            text = "🎨 Draw delay: 0ms"
+            textSize = 11f
+            setBackgroundColor(Color.parseColor("#334155"))
+            setTextColor(Color.WHITE)
+            setOnClickListener { cycleDrawDelay() }
+        }
+
+        buttonRow2.addView(layoutDelayButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(2, 0, 2, 0) })
+        buttonRow2.addView(drawDelayButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(2, 0, 2, 0) })
+        rootLayout.addView(buttonRow2)
 
         setContentView(rootLayout)
 
@@ -598,6 +617,42 @@ class MainActivity : Activity() {
             try {
                 data.writeLong(simulatedLayoutDelayMs)
                 service.transact(RightCpuService.TRANSACTION_SET_LAYOUT_DELAY, data, reply, 0)
+            } catch (_: Exception) {}
+            finally {
+                data.recycle()
+                reply.recycle()
+            }
+        }
+    }
+
+    private fun cycleDrawDelay() {
+        simulatedDrawDelayMs = when (simulatedDrawDelayMs) {
+            0L -> 8L
+            8L -> 20L
+            else -> 0L
+        }
+        when (simulatedDrawDelayMs) {
+            0L -> {
+                drawDelayButton.text = "🎨 Draw delay: 0ms"
+                drawDelayButton.setBackgroundColor(Color.parseColor("#334155"))
+            }
+            8L -> {
+                drawDelayButton.text = "🎨 Draw delay: 8ms"
+                drawDelayButton.setBackgroundColor(Color.parseColor("#D97706"))
+            }
+            20L -> {
+                drawDelayButton.text = "🎨 Draw delay: 20ms (JANK)"
+                drawDelayButton.setBackgroundColor(Color.parseColor("#DC2626"))
+            }
+        }
+
+        // Send Draw delay (DisplayList rebuild simulation) directly to :right_cpu process
+        rightServiceBinder?.let { service ->
+            val data = Parcel.obtain()
+            val reply = Parcel.obtain()
+            try {
+                data.writeLong(simulatedDrawDelayMs)
+                service.transact(RightCpuService.TRANSACTION_SET_DRAW_DELAY, data, reply, 0)
             } catch (_: Exception) {}
             finally {
                 data.recycle()

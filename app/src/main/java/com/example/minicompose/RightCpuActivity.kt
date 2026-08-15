@@ -43,6 +43,7 @@ class RightCpuActivity : Activity() {
     private lateinit var statsText: TextView
     private lateinit var processHeader: TextView
     private lateinit var layoutDelayButton: Button
+    private lateinit var drawDelayButton: Button
     private lateinit var complexityButton: Button
 
     private var animationProgress: Float = 0f
@@ -53,6 +54,7 @@ class RightCpuActivity : Activity() {
 
     // Simulated additional main-thread layout calculation delay in ms
     private var simulatedLayoutDelayMs: Long = 0L
+    private var simulatedDrawDelayMs: Long = 0L
 
     private var offsetNode: LayoutNode? = null
     private val motionTrail = ArrayDeque<Float>()
@@ -134,6 +136,15 @@ class RightCpuActivity : Activity() {
             setOnClickListener { cycleComplexity() }
         }
 
+        buttonRow1.addView(animateButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(2, 0, 2, 0) })
+        buttonRow1.addView(complexityButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.8f).apply { setMargins(2, 0, 2, 0) })
+        rootLayout.addView(buttonRow1)
+
+        val buttonRow2 = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+
         layoutDelayButton = Button(this).apply {
             text = "🔥 Layout delay: 0ms"
             textSize = 11f
@@ -142,10 +153,17 @@ class RightCpuActivity : Activity() {
             setOnClickListener { cycleLayoutDelay() }
         }
 
-        buttonRow1.addView(animateButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(2, 0, 2, 0) })
-        buttonRow1.addView(complexityButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.3f).apply { setMargins(2, 0, 2, 0) })
-        buttonRow1.addView(layoutDelayButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.3f).apply { setMargins(2, 0, 2, 0) })
-        rootLayout.addView(buttonRow1)
+        drawDelayButton = Button(this).apply {
+            text = "🎨 Draw delay: 0ms"
+            textSize = 11f
+            setBackgroundColor(Color.parseColor("#334155"))
+            setTextColor(Color.WHITE)
+            setOnClickListener { cycleDrawDelay() }
+        }
+
+        buttonRow2.addView(layoutDelayButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(2, 0, 2, 0) })
+        buttonRow2.addView(drawDelayButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(2, 0, 2, 0) })
+        rootLayout.addView(buttonRow2)
 
         val splitScreenBtn = Button(this).apply {
             text = "⚡ Launch GPU Process Adjacent"
@@ -216,6 +234,14 @@ class RightCpuActivity : Activity() {
                 y = h / 2 - cardHeight / 2
 
                 drawBlock = { canvas ->
+                    if (simulatedDrawDelayMs > 0) {
+                        val start = System.nanoTime()
+                        val targetNs = simulatedDrawDelayMs * 1_000_000L
+                        var dummy = 0.0
+                        while (System.nanoTime() - start < targetNs) {
+                            dummy += Math.cos(dummy + 1.0)
+                        }
+                    }
                     drawCardVisuals(canvas, cardWidth, cardHeight)
 
                     val centerScreenY = (h / 2f) + (offsetNode?.offsetY ?: 0)
@@ -446,6 +472,28 @@ class RightCpuActivity : Activity() {
             20L -> {
                 layoutDelayButton.text = "🔥 Layout delay: 20ms (JANK)"
                 layoutDelayButton.setBackgroundColor(Color.parseColor("#DC2626"))
+            }
+        }
+    }
+
+    private fun cycleDrawDelay() {
+        simulatedDrawDelayMs = when (simulatedDrawDelayMs) {
+            0L -> 8L
+            8L -> 20L
+            else -> 0L
+        }
+        when (simulatedDrawDelayMs) {
+            0L -> {
+                drawDelayButton.text = "🎨 Draw delay: 0ms"
+                drawDelayButton.setBackgroundColor(Color.parseColor("#334155"))
+            }
+            8L -> {
+                drawDelayButton.text = "🎨 Draw delay: 8ms"
+                drawDelayButton.setBackgroundColor(Color.parseColor("#D97706"))
+            }
+            20L -> {
+                drawDelayButton.text = "🎨 Draw delay: 20ms (JANK)"
+                drawDelayButton.setBackgroundColor(Color.parseColor("#DC2626"))
             }
         }
     }
