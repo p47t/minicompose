@@ -72,11 +72,6 @@ class GraphicsLayer(name: String = "MiniComposeLayer") {
     /** Tracks whether the Display List needs re-recording. */
     var isDirty: Boolean = true
 
-    /** Invalidate the recorded DisplayList so it gets re-recorded on the next frame. */
-    fun invalidate() {
-        isDirty = true
-    }
-
     var compositingStrategy: CompositingStrategy = CompositingStrategy.Auto
 
     // ╔══════════════════════════════════════════════════════════════════════╗
