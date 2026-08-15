@@ -42,6 +42,7 @@ class RightCpuService : Service() {
         const val TRANSACTION_SET_LAYOUT_DELAY = 3
         const val TRANSACTION_GET_STATS = 4
         const val TRANSACTION_SET_DRAW_DELAY = 5
+        const val TRANSACTION_SET_ANIMATING = 6
         private const val TAG = "RightCpuProcess"
     }
 
@@ -122,6 +123,18 @@ class RightCpuService : Service() {
                 TRANSACTION_SET_DRAW_DELAY -> {
                     val delayMs = data.readLong()
                     mainHandler.post { simulatedDrawDelayMs = delayMs }
+                    reply?.writeNoException()
+                    return true
+                }
+                TRANSACTION_SET_ANIMATING -> {
+                    val shouldAnimate = data.readInt() != 0
+                    mainHandler.post {
+                        if (shouldAnimate) {
+                            startAnimation()
+                        } else {
+                            resetAnimation()
+                        }
+                    }
                     reply?.writeNoException()
                     return true
                 }
@@ -420,6 +433,17 @@ class RightCpuService : Service() {
             }
             start()
         }
+    }
+
+    private fun resetAnimation() {
+        animator?.cancel()
+        animationProgress = 0f
+        synchronized(motionTrail) { motionTrail.clear() }
+        offsetNode?.let { node ->
+            node.offsetY = 0
+            markTreeDirty(node)
+        }
+        composeView?.getAndroidComposeView()?.invalidateCompose()
     }
 
     private fun markTreeDirty(node: LayoutNode) {

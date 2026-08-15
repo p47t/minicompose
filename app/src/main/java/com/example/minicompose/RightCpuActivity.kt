@@ -45,7 +45,9 @@ class RightCpuActivity : Activity() {
     private lateinit var layoutDelayButton: Button
     private lateinit var drawDelayButton: Button
     private lateinit var complexityButton: Button
+    private lateinit var animateToggleButton: Button
 
+    private var isAnimating: Boolean = true
     private var animationProgress: Float = 0f
     private var animator: ValueAnimator? = null
 
@@ -122,10 +124,12 @@ class RightCpuActivity : Activity() {
             gravity = Gravity.CENTER
         }
 
-        val animateButton = Button(this).apply {
-            text = "▶ Animate"
+        animateToggleButton = Button(this).apply {
+            text = "⏹ Stop & Reset"
             textSize = 11f
-            setOnClickListener { startAnimation() }
+            setBackgroundColor(Color.parseColor("#B91C1C"))
+            setTextColor(Color.WHITE)
+            setOnClickListener { toggleAnimation() }
         }
 
         complexityButton = Button(this).apply {
@@ -136,7 +140,7 @@ class RightCpuActivity : Activity() {
             setOnClickListener { cycleComplexity() }
         }
 
-        buttonRow1.addView(animateButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(2, 0, 2, 0) })
+        buttonRow1.addView(animateToggleButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.2f).apply { setMargins(2, 0, 2, 0) })
         buttonRow1.addView(complexityButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.8f).apply { setMargins(2, 0, 2, 0) })
         rootLayout.addView(buttonRow1)
 
@@ -427,7 +431,23 @@ class RightCpuActivity : Activity() {
         }
     }
 
+    private fun toggleAnimation() {
+        isAnimating = !isAnimating
+        if (isAnimating) {
+            animateToggleButton.text = "⏹ Stop & Reset"
+            animateToggleButton.setBackgroundColor(Color.parseColor("#B91C1C"))
+            startAnimation()
+        } else {
+            animateToggleButton.text = "▶ Animate"
+            animateToggleButton.setBackgroundColor(Color.parseColor("#15803D"))
+            resetAnimation()
+        }
+    }
+
     private fun startAnimation() {
+        isAnimating = true
+        animateToggleButton.text = "⏹ Stop & Reset"
+        animateToggleButton.setBackgroundColor(Color.parseColor("#B91C1C"))
         animator?.cancel()
         animator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = 2000
@@ -448,6 +468,17 @@ class RightCpuActivity : Activity() {
             }
             start()
         }
+    }
+
+    private fun resetAnimation() {
+        animator?.cancel()
+        animationProgress = 0f
+        synchronized(motionTrail) { motionTrail.clear() }
+        offsetNode?.let { node ->
+            node.offsetY = 0
+            markTreeDirty(node)
+        }
+        composeView.getAndroidComposeView()?.invalidateCompose()
     }
 
     private fun markTreeDirty(node: LayoutNode) {

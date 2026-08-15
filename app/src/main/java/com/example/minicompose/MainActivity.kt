@@ -66,12 +66,14 @@ class MainActivity : Activity() {
     private lateinit var complexityButton: Button
     private lateinit var layoutDelayButton: Button
     private lateinit var drawDelayButton: Button
+    private lateinit var animateToggleButton: Button
 
     private var rightServiceBinder: IBinder? = null
     private var isRightBound = false
     private var rightPid: Int = -1
 
     // Local Left animation state
+    private var isAnimating: Boolean = true
     private var animationProgress: Float = 0f
     private var leftAnimator: ValueAnimator? = null
     private var complexityLevel: Int = 1
@@ -250,10 +252,12 @@ class MainActivity : Activity() {
             setPadding(12, 2, 12, 2)
         }
 
-        val animateButton = Button(this).apply {
-            text = "▶ Animate"
+        animateToggleButton = Button(this).apply {
+            text = "⏹ Stop & Reset"
             textSize = 11f
-            setOnClickListener { startAnimation() }
+            setBackgroundColor(Color.parseColor("#B91C1C"))
+            setTextColor(Color.WHITE)
+            setOnClickListener { toggleAnimation() }
         }
 
         complexityButton = Button(this).apply {
@@ -264,7 +268,7 @@ class MainActivity : Activity() {
             setOnClickListener { cycleComplexity() }
         }
 
-        buttonRow1.addView(animateButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(2, 0, 2, 0) })
+        buttonRow1.addView(animateToggleButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.2f).apply { setMargins(2, 0, 2, 0) })
         buttonRow1.addView(complexityButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.8f).apply { setMargins(2, 0, 2, 0) })
         rootLayout.addView(buttonRow1)
 
@@ -547,7 +551,37 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun toggleAnimation() {
+        isAnimating = !isAnimating
+        if (isAnimating) {
+            animateToggleButton.text = "⏹ Stop & Reset"
+            animateToggleButton.setBackgroundColor(Color.parseColor("#B91C1C"))
+            startAnimation()
+        } else {
+            animateToggleButton.text = "▶ Animate"
+            animateToggleButton.setBackgroundColor(Color.parseColor("#15803D"))
+            resetAnimation()
+        }
+
+        // Notify RightCpuService (:right_cpu process)
+        rightServiceBinder?.let { service ->
+            val data = Parcel.obtain()
+            val reply = Parcel.obtain()
+            try {
+                data.writeInt(if (isAnimating) 1 else 0)
+                service.transact(RightCpuService.TRANSACTION_SET_ANIMATING, data, reply, 0)
+            } catch (_: Exception) {}
+            finally {
+                data.recycle()
+                reply.recycle()
+            }
+        }
+    }
+
     private fun startAnimation() {
+        isAnimating = true
+        animateToggleButton.text = "⏹ Stop & Reset"
+        animateToggleButton.setBackgroundColor(Color.parseColor("#B91C1C"))
         leftAnimator?.cancel()
         leftAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = 2000
