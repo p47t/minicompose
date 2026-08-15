@@ -196,7 +196,7 @@ class LayoutNode(val name: String = "Node") {
     fun draw(canvas: MiniCanvas) {
         val layer = graphicsLayer
 
-        if (layer != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && canvas.getNativeCanvas().isHardwareAccelerated) {
+        if (layer != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             // ── Hardware-accelerated path (graphicsLayer) ─────────────────
 
             // Step 1: Update header properties (the FAST path!)

@@ -125,7 +125,7 @@ app/src/main/java/com/example/minicompose/
 2. Open the project in Android Studio.
 3. Run on an Android Emulator or physical device (Android 10+ / API 29+ recommended).
 4. Tap **`🚀 Launch CPU Process Side-by-Side (Split Screen)`** to open both processes adjacent to each other.
-5. Experiment with the **`📊 Tree Size (100 / 500 / 1000 Nodes)`**, **`🔥 Layout delay (Phase 2)`**, and **`🎨 Draw load (+150 / +400 DisplayList Layers)`** toggles to see real-time process isolation and phase-specific profiling in action!
+5. Experiment with the **`📊 Tree Size (100 / 500 / 1000 Nodes)`**, **`🔥 Layout delay (Phase 2)`**, and **`🎨 Draw load (+100 / +200 DisplayList Layers)`** toggles to see real-time process isolation and phase-specific profiling in action!
 
 ---
 

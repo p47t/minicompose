@@ -71,6 +71,7 @@ class GraphicsLayer(name: String = "MiniComposeLayer") {
 
     /** Tracks whether the Display List needs re-recording. */
     var isDirty: Boolean = true
+        private set
 
     var compositingStrategy: CompositingStrategy = CompositingStrategy.Auto
 
@@ -217,7 +218,7 @@ class GraphicsLayer(name: String = "MiniComposeLayer") {
      * alpha) as a hardware transform — the Display List itself is untouched.
      */
     fun drawInto(canvas: Canvas) {
-        if (renderNode.hasDisplayList() && canvas.isHardwareAccelerated) {
+        if (renderNode.hasDisplayList()) {
             canvas.drawRenderNode(renderNode)
         }
     }
